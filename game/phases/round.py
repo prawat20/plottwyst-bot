@@ -151,7 +151,7 @@ async def run_voting(
             color=discord.Color.orange(),
         )
         # Suspect status board
-        embed.add_field(name="Suspect Board", value=_suspect_board(), inline=True)
+        embed.add_field(name="Suspect Board", value=_suspect_board(), inline=False)
 
         # Live vote tally
         tally = state.vote_tally()
@@ -160,7 +160,7 @@ async def run_voting(
                 f"**{name}** — {count} vote{'s' if count != 1 else ''}"
                 for name, count in sorted(tally.items(), key=lambda x: -x[1])
             ]
-            embed.add_field(name="Live Votes", value="\n".join(tally_lines), inline=True)
+            embed.add_field(name="Live Votes", value="\n".join(tally_lines), inline=False)
 
         if ref:
             embed.add_field(name="Quick Reference", value=ref, inline=False)

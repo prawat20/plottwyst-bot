@@ -26,11 +26,13 @@ class SuspectFilesView(discord.ui.View):
             title=f"🕵️  Suspect {self.page + 1} of {total}  ·  {s['name']}",
             color=discord.Color.blurple(),
         )
-        embed.add_field(name="Relation to Victim", value=s["relation"],          inline=True)
-        embed.add_field(name="Personality",         value=s["trait"],             inline=True)
-        embed.add_field(name="Last Seen",           value=s["last_seen"],          inline=True)
-        embed.add_field(name="Motive",              value=s["motive"],             inline=False)
-        embed.add_field(name="Their Statement",     value=f'*"{s["alibi"]}"*',    inline=False)
+        embed.add_field(
+            name="Profile",
+            value=f"**Relation:** {s['relation']}  ·  **Last Seen:** {s['last_seen']}\n*{s['trait']}*",
+            inline=False,
+        )
+        embed.add_field(name="Motive",          value=s["motive"],             inline=False)
+        embed.add_field(name="Their Statement", value=f'*"{s["alibi"]}"*',    inline=False)
         embed.set_footer(
             text=f"◀ / ▶ to browse all {total} suspects  ·  Keep this message handy for reference"
         )
