@@ -9,6 +9,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from tiers.entitlements import TIERS, Feature
+from db.session import AsyncSessionLocal
+from db.repositories import limit_hit_repo
 
 
 class PremiumCog(commands.Cog):
@@ -19,6 +21,15 @@ class PremiumCog(commands.Cog):
 
     @premium_group.command(name="info", description="See what Plottwyst Premium includes.")
     async def info(self, interaction: discord.Interaction) -> None:
+        if interaction.guild_id:
+            async with AsyncSessionLocal() as session:
+                await limit_hit_repo.record(
+                    session    = session,
+                    guild_id   = interaction.guild_id,
+                    user_id    = interaction.user.id,
+                    channel_id = interaction.channel_id,
+                    limit_type = "premium_info_view",
+                )
         free    = TIERS["free"]
         premium = TIERS["premium"]
 
@@ -61,6 +72,15 @@ class PremiumCog(commands.Cog):
 
     @premium_group.command(name="activate", description="Activate a premium key for this server.")
     async def activate(self, interaction: discord.Interaction, key: str) -> None:
+        if interaction.guild_id:
+            async with AsyncSessionLocal() as session:
+                await limit_hit_repo.record(
+                    session    = session,
+                    guild_id   = interaction.guild_id,
+                    user_id    = interaction.user.id,
+                    channel_id = interaction.channel_id,
+                    limit_type = "premium_activate_attempt",
+                )
         # Phase 4: validate key against payment provider, set server tier
         await interaction.response.send_message(
             "Premium activation is coming soon! Join our community for early access.",

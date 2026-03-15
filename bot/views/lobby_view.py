@@ -5,6 +5,8 @@ from game.state import GameState
 from game import session_manager
 from game.phases.lobby import add_player, can_start
 from engine.prompts.genres import GENRE_MENU, genre_display_name
+from db.session import AsyncSessionLocal
+from db.repositories import limit_hit_repo
 
 
 def build_lobby_embed(
@@ -85,6 +87,14 @@ class GenreSelect(discord.ui.Select):
 
         # Block free users from premium genres
         if entry["premium"] and not self.is_premium:
+            async with AsyncSessionLocal() as session:
+                await limit_hit_repo.record(
+                    session    = session,
+                    guild_id   = interaction.guild_id,
+                    user_id    = interaction.user.id,
+                    channel_id = interaction.channel_id,
+                    limit_type = "premium_genre",
+                )
             # Reset the select back to random visually
             for opt in self.options:
                 opt.default = (opt.value == "random")
@@ -132,6 +142,14 @@ class LobbyView(discord.ui.View):
             await interaction.response.send_message("The game has already started.", ephemeral=True)
             return
         if len(state.players) >= self.max_players:
+            async with AsyncSessionLocal() as session:
+                await limit_hit_repo.record(
+                    session    = session,
+                    guild_id   = interaction.guild_id,
+                    user_id    = interaction.user.id,
+                    channel_id = interaction.channel_id,
+                    limit_type = "max_players",
+                )
             await interaction.response.send_message(
                 f"The lobby is full ({self.max_players} players max).", ephemeral=True
             )
