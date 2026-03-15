@@ -27,6 +27,16 @@ async def init_db() -> None:
             "ALTER TABLE limit_hits ADD COLUMN IF NOT EXISTS channel_id    BIGINT NOT NULL DEFAULT 0",
             "ALTER TABLE users      ADD COLUMN IF NOT EXISTS games_today   INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE users      ADD COLUMN IF NOT EXISTS games_date    TIMESTAMP",
+            """
+            CREATE TABLE IF NOT EXISTS guild_events (
+                id           SERIAL PRIMARY KEY,
+                guild_id     BIGINT        NOT NULL,
+                guild_name   VARCHAR(100),
+                member_count INTEGER,
+                event_type   VARCHAR(20)   NOT NULL,
+                created_at   TIMESTAMP     NOT NULL DEFAULT NOW()
+            )
+            """,
         ]
         for sql in migrations:
             await conn.execute(__import__("sqlalchemy").text(sql))
