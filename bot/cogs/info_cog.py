@@ -21,13 +21,17 @@ _HTP_PAGES = [
             "the suspects, gather clues across 4 rounds, and name the murderer "
             "before the trail goes cold.\n\n"
             "**Win condition:** Correctly identify the murderer in the final guess.\n"
-            "**Lose condition:** Accidentally vote out the murderer during a round — "
-            "and *nobody wins*."
+            "**Lose condition:** Accidentally vote out the murderer mid-game — "
+            "the killer escapes and the game ends immediately.\n\n"
+            "⚠️ **Every case contains a Plottwyst** — a deliberate misdirection "
+            "built into the evidence from the very first clue. "
+            "The opening evidence may point confidently in the wrong direction. "
+            "Trust the clues, but question what they're really telling you."
         ),
         "fields": [
-            ("🎮  Start a Game", "`/lobby` → Join → Host clicks Start Game", False),
-            ("⏱️  Game Length", "~15–25 minutes", True),
-            ("👥  Players", "1–5 (free)  ·  1–10 (premium)", True),
+            ("🎮  Start a Game", "`/lobby` → players join → host clicks Start", False),
+            ("⏱️  Game Length", "~20 minutes", True),
+            ("👥  Players", "2–5 (free)  ·  2–10 (premium)", True),
         ],
         "footer": "Page 1 / 5  ·  Use the buttons below to navigate",
         "color": discord.Color.dark_blue(),
@@ -35,20 +39,21 @@ _HTP_PAGES = [
     {
         "title": "🔴  How to Play — The Crime Scene",
         "description": (
-            "Once the game begins, Plottwyst reveals the full case:\n\n"
+            "Once the game begins, the full case is revealed:\n\n"
             "**📍 Setting** — The location and era of the crime.\n"
-            "**💀 Victim** — Who died, and their background.\n"
-            "**⚡ Twist** — An unexpected detail that changes the picture.\n"
+            "**💀 Victim** — Who died, their background, and what secrets they kept.\n"
             "**🕵️ Suspects** — Six characters, each with a relation to the victim, "
-            "a motive, a last known location, and a personal statement.\n"
-            "**🔎 Opening Clues** — Your first pieces of hard evidence.\n\n"
-            "Take your time — read every profile before the discussion starts."
+            "a motive, a last known location, and a personal alibi statement.\n"
+            "**🔎 Opening Clues** — Three pieces of initial evidence to start your investigation.\n\n"
+            "Read every suspect profile carefully before discussion begins — "
+            "the details in their background and alibi matter more than they appear."
         ),
         "fields": [
             (
                 "💡  Detective Tip",
-                "The murderer's alibi will have subtle inconsistencies. "
-                "Cross-reference their statement against the clues.",
+                "Don't anchor too early. The opening clues are designed to build a convincing "
+                "picture — but that picture may be exactly what the killer wants you to see. "
+                "Cross-reference every clue against every profile.",
                 False,
             ),
         ],
@@ -56,20 +61,24 @@ _HTP_PAGES = [
         "color": discord.Color.dark_red(),
     },
     {
-        "title": "💬  How to Play — Discussion Rounds",
+        "title": "💬  How to Play — Discussion & Voting",
         "description": (
             "There are **4 rounds**. Each round has three stages:\n\n"
-            "**1. Discussion** — The timer runs while you talk in chat. "
-            "Share theories, challenge alibis, and build your case.\n\n"
-            "**2. Voting** — Clear a suspect you're confident is innocent. "
-            "The person with the most votes is eliminated from the suspect pool.\n\n"
-            "**3. New Clue** — Fresh evidence is revealed to help you close in."
+            "**1. Discussion** — Talk freely in chat. Share theories, challenge alibis, "
+            "and cross-reference clues against suspect profiles. "
+            "The timer runs — use the time.\n\n"
+            "**2. Voting** — Each player votes to **clear** one suspect they're "
+            "confident is innocent. The suspect with the most votes is eliminated "
+            "from the pool. No majority = no elimination, game continues.\n\n"
+            "**3. New Clue** — A fresh piece of evidence is revealed. "
+            "Later clues are more precise — pay close attention to rounds 3 and 4."
         ),
         "fields": [
             (
-                "⚠️  Critical Rule",
-                "If the eliminated suspect turns out to be the murderer, "
-                "**the round is forfeit and nobody wins it.** Choose carefully.",
+                "☠️  Critical Rule",
+                "If your team votes out the **actual murderer**, the game ends immediately — "
+                "the killer escapes. There is no second chance. "
+                "Be certain before you vote someone innocent.",
                 False,
             ),
         ],
@@ -77,22 +86,25 @@ _HTP_PAGES = [
         "color": discord.Color.blue(),
     },
     {
-        "title": "🗳️  How to Play — Voting",
+        "title": "🗳️  How to Play — How Voting Works",
         "description": (
-            "Voting is your tool for **clearing innocent suspects** from the pool.\n\n"
+            "Voting is your tool for **narrowing the suspect pool** round by round.\n\n"
             "**Step-by-step:**\n"
-            "① Click the name of the suspect you're sure is **NOT** the murderer.\n"
-            "② A private confirmation prompt appears — only you can see it.\n"
-            "③ Confirm your vote to lock it in.\n"
-            "④ If a majority of players agree, that suspect is eliminated.\n\n"
-            "**No majority?** No one is eliminated — you simply move on to the next clue.\n\n"
-            "**Strategy:** Coordinate with your team during discussion so your "
-            "votes land on the same innocent suspect."
+            "① Click a suspect's name — the one you're sure is **NOT** the murderer\n"
+            "② A private confirmation appears — only you can see it\n"
+            "③ Confirm to lock your vote in\n"
+            "④ If a strict majority of players agree, that suspect is cleared\n\n"
+            "**No majority reached?** No one is eliminated — the next clue is revealed "
+            "and you move on.\n\n"
+            "**📋 Case File button** — visible during every voting round. "
+            "Click it for a private digest of all suspects and every clue revealed so far. "
+            "Use it to refresh your memory without scrolling up."
         ),
         "fields": [
             (
-                "💡  Tip",
-                "You can only vote once per round, and you can't change it after confirming. Think before you click.",
+                "💡  Strategy",
+                "Coordinate during discussion — if your team splits votes across two suspects, "
+                "neither gets eliminated. Agree on one target before voting opens.",
                 False,
             ),
         ],
@@ -102,24 +114,27 @@ _HTP_PAGES = [
     {
         "title": "🎯  How to Play — Final Guess & Resolution",
         "description": (
-            "After all rounds, every player gets **one final guess**.\n\n"
+            "After all 4 rounds, every detective gets **one final guess**.\n\n"
             "**Final Guess:**\n"
-            "Select who you believe is the murderer from the remaining suspects. "
-            "Your choice is private — only the resolution will reveal who was right.\n\n"
+            "Choose who you believe is the murderer from the remaining suspects. "
+            "Your answer is private — no one sees it until the full reveal.\n\n"
             "**Resolution:**\n"
-            "The full truth comes out — the murderer's real motive, how the crime "
-            "was committed, and the clever red herring that was planted to mislead you.\n\n"
-            "Every detective who guessed correctly is crowned a **winner** 🏆\n"
-            "Your results are saved — check `/stats` or `/leaderboard` anytime."
+            "Every detective's verdict is unsealed one by one. "
+            "Then the full truth is revealed — the murderer's identity, their real motive, "
+            "how they committed the crime, and the **Plottwyst**: "
+            "exactly how the misdirection was constructed to fool you.\n\n"
+            "Every detective who guessed correctly wins 🏆\n"
+            "Results are saved automatically — check `/stats` or `/leaderboard` anytime."
         ),
         "fields": [
             (
-                "🔁  Replay Value",
-                "Every case is AI-generated — new suspects, motives, and clues each time. No two games are alike.",
+                "🎭  Did the Plottwyst fool you?",
+                "After each game you can rate the case and tell us whether the misdirection "
+                "worked. That feedback shapes future cases.",
                 False,
             ),
         ],
-        "footer": "Page 5 / 5  ·  Good luck, Detective!",
+        "footer": "Page 5 / 5  ·  Good luck, Detective.",
         "color": discord.Color.dark_purple(),
     },
 ]
@@ -192,18 +207,21 @@ class InfoCog(commands.Cog):
         embed = discord.Embed(
             title="🔍  About Plottwyst",
             description=(
-                "**Plottwyst** is an AI-powered murder mystery game for Discord.\n\n"
+                "**Plottwyst** is a murder mystery game for Discord.\n\n"
                 "Every case is uniquely generated — different victims, suspects, motives, "
-                "and clues every single time. No two investigations are ever the same."
+                "and clues every single time. No two investigations are ever the same.\n\n"
+                "Every case also contains a **Plottwyst** — a deliberate misdirection "
+                "built into the evidence from clue one. Your job is to see through it."
             ),
             color=discord.Color.dark_blue(),
         )
         embed.add_field(
             name="How It Works",
             value=(
-                "Plottwyst uses Google Gemini to craft original murder mysteries across "
-                "genres like Victorian England, 1920s noir, and corporate intrigue. "
-                "Evidence drips in over 4 rounds — building tension until the final reveal."
+                "Plottwyst generates original murder mysteries across genres — "
+                "Victorian England, 1920s noir, modern corporate thriller, and more. "
+                "Evidence builds over 4 rounds, each clue narrowing the field "
+                "until one final guess decides the case."
             ),
             inline=False,
         )
@@ -213,7 +231,7 @@ class InfoCog(commands.Cog):
                 f"· Up to **{free_players} players** per game\n"
                 f"· **{free_limit} games** per day\n"
                 f"· Full leaderboard & personal stats\n"
-                f"· AI-generated mysteries"
+                f"· Unique mysteries every game"
             ),
             inline=True,
         )
