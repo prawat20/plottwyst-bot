@@ -130,6 +130,22 @@ class LimitHit(Base):
     hit_at     = Column(DateTime,   nullable=False, default=func.now())
 
 
+class GuildEvent(Base):
+    """
+    Append-only log of the bot joining or leaving servers.
+    Used to track install growth and churn.
+    """
+    __tablename__ = "guild_events"
+
+    id           = Column(Integer,     primary_key=True, autoincrement=True)
+    guild_id     = Column(BigInteger,  nullable=False)
+    guild_name   = Column(String(100), nullable=True)
+    member_count = Column(Integer,     nullable=True)
+    # 'joined' | 'left'
+    event_type   = Column(String(20),  nullable=False)
+    created_at   = Column(DateTime,    nullable=False, default=func.now())
+
+
 class Subscription(Base):
     """Phase 4: payment/subscription tracking."""
     __tablename__ = "subscriptions"

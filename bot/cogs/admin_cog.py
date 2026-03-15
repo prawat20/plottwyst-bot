@@ -8,7 +8,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from db.session import AsyncSessionLocal
-from db.repositories import user_repo, limit_hit_repo
+from db.repositories import user_repo, limit_hit_repo, guild_event_repo
 import config
 
 
@@ -140,6 +140,49 @@ class AdminCog(commands.Cog):
             )
 
         await interaction.followup.send(embeds=[servers_embed, users_embed], ephemeral=True)
+
+
+    @app_commands.command(
+        name="installs",
+        description="[Owner only] Bot install and removal history.",
+    )
+    async def installs(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id not in config.PREMIUM_USER_IDS:
+            await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        async with AsyncSessionLocal() as session:
+            events        = await guild_event_repo.get_recent(session, limit=20)
+            total_joined, total_left = await guild_event_repo.get_totals(session)
+
+        active = total_joined - total_left
+
+        embed = discord.Embed(
+            title="📊  Bot Installs",
+            description=(
+                f"**{total_joined}** total installs  ·  "
+                f"**{total_left}** removals  ·  "
+                f"**{active}** currently active servers"
+            ),
+            color=discord.Color.green(),
+        )
+
+        if events:
+            lines = []
+            for e in events:
+                icon = "✅" if e.event_type == "joined" else "❌"
+                ts   = e.created_at.strftime("%Y-%m-%d %H:%M") if e.created_at else "—"
+                name = e.guild_name or f"id:{e.guild_id}"
+                lines.append(f"{icon} **{name}** · {e.member_count or '?'} members · {ts}")
+            embed.add_field(
+                name="Recent Events",
+                value="\n".join(lines[:20]),
+                inline=False,
+            )
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

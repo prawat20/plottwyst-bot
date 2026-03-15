@@ -23,6 +23,7 @@ COGS = [
     "bot.cogs.admin_cog",
     "bot.cogs.premium_cog",
     "bot.cogs.info_cog",
+    "bot.cogs.events_cog",
 ]
 
 intents = discord.Intents.default()
