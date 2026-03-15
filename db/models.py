@@ -42,6 +42,9 @@ class User(Base):
     games_won       = Column(Integer, nullable=False, default=0)
     rounds_played   = Column(Integer, nullable=False, default=0)
     correct_guesses = Column(Integer, nullable=False, default=0)
+    # Daily game tracking — mirrors servers.games_today pattern
+    games_today     = Column(Integer,  nullable=False, default=0)
+    games_date      = Column(DateTime, nullable=True)   # date of last games_today reset
     # Phase 3: murderer-among-players mode stats
     murderer_games  = Column(Integer, nullable=False, default=0)
     murderer_wins   = Column(Integer, nullable=False, default=0)

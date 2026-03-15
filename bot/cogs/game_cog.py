@@ -118,11 +118,12 @@ class GameCog(commands.Cog):
             state.case = case
             await session_manager.save(state)
 
-            # Increment daily counter now — game has officially started.
+            # Increment daily counters now — game has officially started.
             # Doing this at start (not end) closes the race where two simultaneous
             # lobbies both pass the limit check before either increments.
             async with AsyncSessionLocal() as session:
                 await server_repo.increment_games_today(session, state.guild_id)
+                await user_repo.increment_games_today(session, state.creator_id, state.guild_id)
 
             # Reveal phase
             await reveal_phase.run_reveal(channel, state)

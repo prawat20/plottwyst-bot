@@ -40,30 +40,47 @@ class TierManager:
         """
         Returns (allowed, reason).
         reason is empty string when allowed.
+        Checks server-level limit first, then user-level limit.
         Dev users bypass all limits.
         Limit hits are logged for upsell analytics.
         """
-        from db.repositories import limit_hit_repo
+        from db.repositories import limit_hit_repo, user_repo
 
         if TierManager._is_dev_user(creator_id):
             return True, ""
 
-        limit = await TierManager.get(session, guild_id, Feature.DAILY_GAME_LIMIT)
-        if limit is None:
-            return True, ""
+        # ── Server-level check ────────────────────────────────────────────────
+        server_limit = await TierManager.get(session, guild_id, Feature.DAILY_GAME_LIMIT)
+        if server_limit is not None:
+            allowed = await server_repo.check_daily_limit(session, guild_id, server_limit)
+            if not allowed:
+                await limit_hit_repo.record(
+                    session    = session,
+                    guild_id   = guild_id,
+                    user_id    = creator_id,
+                    channel_id = channel_id,
+                    limit_type = "daily_game_limit",
+                )
+                return False, (
+                    f"This server has reached its **{server_limit} games/day** free limit. "
+                    "Upgrade to Premium for unlimited games."
+                )
 
-        allowed = await server_repo.check_daily_limit(session, guild_id, limit)
-        if not allowed:
-            # Log the hit for upsell tracking
-            await limit_hit_repo.record(
-                session    = session,
-                guild_id   = guild_id,
-                user_id    = creator_id,
-                channel_id = channel_id,
-                limit_type = "daily_game_limit",
-            )
-            return False, (
-                f"Your server has reached its **{limit} games/day** limit. "
-                "Upgrade to premium for unlimited games."
-            )
+        # ── User-level check ──────────────────────────────────────────────────
+        user_limit = await TierManager.get(session, guild_id, Feature.USER_DAILY_GAME_LIMIT)
+        if user_limit is not None:
+            allowed = await user_repo.check_daily_limit(session, creator_id, guild_id, user_limit)
+            if not allowed:
+                await limit_hit_repo.record(
+                    session    = session,
+                    guild_id   = guild_id,
+                    user_id    = creator_id,
+                    channel_id = channel_id,
+                    limit_type = "user_daily_game_limit",
+                )
+                return False, (
+                    f"You've reached your personal limit of **{user_limit} games/day**. "
+                    "Come back tomorrow, or ask your server admin to upgrade to Premium."
+                )
+
         return True, ""

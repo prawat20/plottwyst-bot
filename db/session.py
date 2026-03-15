@@ -25,6 +25,8 @@ async def init_db() -> None:
         migrations = [
             "ALTER TABLE users      ADD COLUMN IF NOT EXISTS display_name  VARCHAR(100)",
             "ALTER TABLE limit_hits ADD COLUMN IF NOT EXISTS channel_id    BIGINT NOT NULL DEFAULT 0",
+            "ALTER TABLE users      ADD COLUMN IF NOT EXISTS games_today   INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE users      ADD COLUMN IF NOT EXISTS games_date    TIMESTAMP",
         ]
         for sql in migrations:
             await conn.execute(__import__("sqlalchemy").text(sql))
