@@ -201,8 +201,9 @@ class InfoCog(commands.Cog):
         description="Learn about Plottwyst — the AI-powered murder mystery game.",
     )
     async def about(self, interaction: discord.Interaction) -> None:
-        free_limit   = TIERS["free"][Feature.DAILY_GAME_LIMIT]
-        free_players = TIERS["free"][Feature.MAX_PLAYERS]
+        free_server_limit = TIERS["free"][Feature.DAILY_GAME_LIMIT]
+        free_user_limit   = TIERS["free"][Feature.USER_DAILY_GAME_LIMIT]
+        free_players      = TIERS["free"][Feature.MAX_PLAYERS]
 
         embed = discord.Embed(
             title="🔍  About Plottwyst",
@@ -229,7 +230,8 @@ class InfoCog(commands.Cog):
             name="🆓  Free Tier",
             value=(
                 f"· Up to **{free_players} players** per game\n"
-                f"· **{free_limit} games** per day\n"
+                f"· **{free_server_limit} games/day** per server\n"
+                f"· **{free_user_limit} games/day** per player\n"
                 f"· Full leaderboard & personal stats\n"
                 f"· Unique mysteries every game"
             ),

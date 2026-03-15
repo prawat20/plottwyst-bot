@@ -45,7 +45,8 @@ class PremiumCog(commands.Cog):
             name="🆓  Free",
             value=(
                 f"✅ Up to **{free[Feature.MAX_PLAYERS]} players** per game\n"
-                f"✅ **{free[Feature.DAILY_GAME_LIMIT]} games** per day\n"
+                f"✅ **{free[Feature.DAILY_GAME_LIMIT]} games/day** per server\n"
+                f"✅ **{free[Feature.USER_DAILY_GAME_LIMIT]} games/day** per player\n"
                 f"✅ Leaderboard & personal stats\n"
                 f"✅ AI-generated mysteries\n"
                 f"❌ Private DM clues\n"
@@ -58,7 +59,8 @@ class PremiumCog(commands.Cog):
             name="⭐  Premium",
             value=(
                 f"✅ Up to **{premium[Feature.MAX_PLAYERS]} players** per game\n"
-                f"✅ **Unlimited** games per day\n"
+                f"✅ **Unlimited** games per server\n"
+                f"✅ **Unlimited** games per player\n"
                 f"✅ Leaderboard & personal stats\n"
                 f"✅ AI-generated mysteries\n"
                 f"✅ Private DM clues *(coming soon)*\n"
