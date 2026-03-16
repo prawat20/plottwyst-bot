@@ -70,6 +70,21 @@ class EventsCog(commands.Cog):
             logger.warning("Could not send welcome message to guild %s — missing permissions", guild.id)
 
     @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        if member.guild.id != 1469920658828820636:
+            return
+        channel = member.guild.get_channel(1483161096608284865)
+        if channel is None:
+            return
+        try:
+            await channel.send(
+                f"👋 Welcome, {member.mention}! A murder has been committed and we need another detective. "
+                f"Check the pinned message here to get started."
+            )
+        except discord.Forbidden:
+            pass
+
+    @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild) -> None:
         logger.info(
             "Bot removed from guild: %s (id=%s)",
