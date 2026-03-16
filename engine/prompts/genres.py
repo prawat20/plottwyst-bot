@@ -125,35 +125,32 @@ GENRE_MENU: list[dict] = [
 ]
 
 
-def pick_random_genre() -> dict:
-    genre   = random.choice(GENRES)
-    setting = random.choice(genre["settings"])
-    method  = random.choice(genre["murder_methods"])
+def _build_genre_context(genre: dict) -> dict:
     return {
         "genre":              genre["genre"],
         "era":                genre["era"],
-        "venue":              setting,
-        "murder_method_hint": method,
+        "venue":              random.choice(genre["settings"]),
+        "murder_method_hint": random.choice(genre["murder_methods"]),
         "clue_flavour":       genre["clue_flavour"],
     }
 
 
-def get_genre_by_key(key: str) -> dict:
+def pick_random_genre(premium_allowed: bool = True) -> dict:
+    """Pick a random genre. Pass premium_allowed=False to restrict to free genres only."""
+    pool  = GENRES if premium_allowed else [g for g in GENRES if not g["premium"]]
+    return _build_genre_context(random.choice(pool))
+
+
+def get_genre_by_key(key: str, premium_allowed: bool = True) -> dict:
     """Return a randomised genre context for the given key.
-    Falls back to a random genre if the key is unknown.
+    Falls back to a random (tier-appropriate) genre if the key is unknown.
     """
     if key == "random":
-        return pick_random_genre()
+        return pick_random_genre(premium_allowed=premium_allowed)
     genre_data = next((g for g in GENRES if g["key"] == key), None)
     if genre_data is None:
-        return pick_random_genre()
-    return {
-        "genre":              genre_data["genre"],
-        "era":                genre_data["era"],
-        "venue":              random.choice(genre_data["settings"]),
-        "murder_method_hint": random.choice(genre_data["murder_methods"]),
-        "clue_flavour":       genre_data["clue_flavour"],
-    }
+        return pick_random_genre(premium_allowed=premium_allowed)
+    return _build_genre_context(genre_data)
 
 
 def genre_display_name(key: str) -> str:

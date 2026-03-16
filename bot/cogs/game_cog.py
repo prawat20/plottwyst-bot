@@ -107,8 +107,15 @@ class GameCog(commands.Cog):
         genre_key: str = "random",
     ) -> None:
         from engine.prompts.genres import get_genre_by_key
-        guild_id     = state.guild_id
-        genre_override = None if genre_key == "random" else get_genre_by_key(genre_key)
+
+        # Increment daily counters and resolve genre with correct tier context.
+        # Done before generate_case so limits are locked in before the API call.
+        async with AsyncSessionLocal() as session:
+            is_premium     = await TierManager.is_premium(session, state.guild_id, creator_id=state.creator_id)
+            genre_override = get_genre_by_key(genre_key, premium_allowed=is_premium)
+            await server_repo.increment_games_today(session, state.guild_id)
+            for uid in state.players:
+                await user_repo.increment_games_today(session, uid, state.guild_id)
 
         final_outcome = "abandoned"   # safe default if anything throws before resolution
         try:
@@ -117,14 +124,6 @@ class GameCog(commands.Cog):
                 case = await generate_case(genre_override=genre_override)
             state.case = case
             await session_manager.save(state)
-
-            # Increment daily counters now — game has officially started.
-            # Doing this at start (not end) closes the race where two simultaneous
-            # lobbies both pass the limit check before either increments.
-            async with AsyncSessionLocal() as session:
-                await server_repo.increment_games_today(session, state.guild_id)
-                for uid in state.players:
-                    await user_repo.increment_games_today(session, uid, state.guild_id)
 
             # Reveal phase
             await reveal_phase.run_reveal(channel, state)
