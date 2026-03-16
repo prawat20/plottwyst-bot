@@ -9,6 +9,7 @@ from discord.ext import commands
 
 from db.session import AsyncSessionLocal
 from db.repositories import user_repo, limit_hit_repo, guild_event_repo
+from game import session_manager
 import config
 
 
@@ -183,6 +184,29 @@ class AdminCog(commands.Cog):
             )
 
         await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+    @app_commands.command(
+        name="forcestop",
+        description="[Owner only] Force-clear a stuck game in this channel.",
+    )
+    async def forcestop(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id not in config.PREMIUM_USER_IDS:
+            await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+            return
+
+        channel_id = interaction.channel_id
+        if not await session_manager.exists(channel_id):
+            await interaction.response.send_message(
+                "No active game found in this channel.", ephemeral=True
+            )
+            return
+
+        await session_manager.delete(channel_id)
+        await interaction.response.send_message(
+            f"✅ Game session cleared for this channel. You can now use `/lobby` to start a new game.",
+            ephemeral=True,
+        )
 
 
 async def setup(bot: commands.Bot) -> None:
