@@ -188,11 +188,12 @@ class AdminCog(commands.Cog):
 
     @app_commands.command(
         name="forcestop",
-        description="[Owner only] Force-clear a stuck game in this channel.",
+        description="[Admin only] Force-clear a stuck game in this channel.",
     )
+    @app_commands.default_permissions(administrator=True)
     async def forcestop(self, interaction: discord.Interaction) -> None:
-        if interaction.user.id not in config.PREMIUM_USER_IDS:
-            await interaction.response.send_message("You don't have permission to use this command.", ephemeral=True)
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("You need Administrator permission to use this command.", ephemeral=True)
             return
 
         channel_id = interaction.channel_id
