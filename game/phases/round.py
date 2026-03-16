@@ -1,6 +1,6 @@
 from __future__ import annotations
 """
-Round phase: Discussion → Voting → Vote resolution → Clue reveal.
+Round phase: Ready gate → Discussion → Voting → Vote resolution → Clue reveal.
 
 Each round is a self-contained coroutine.
 Returns the outcome string: 'murderer_eliminated' | 'innocent_eliminated' | 'no_majority'
@@ -14,13 +14,37 @@ from game import session_manager
 from game.phases.reveal import CLUE_TYPE_EMOJI, CLUE_TYPE_LABEL
 
 
-# ── Quick reference links ────────────────────────────────────────────────────
+# ── Ready gate view ───────────────────────────────────────────────────────────
 
-def _ref_links(state: GameState) -> str:
+class ReadyView(discord.ui.View):
+    """Host-controlled gate before discussion begins. Auto-starts after 2 minutes."""
+
+    def __init__(self, host_id: int, timeout: float = 120.0):
+        super().__init__(timeout=timeout)
+        self.host_id = host_id
+        self.ready   = asyncio.Event()
+
+    @discord.ui.button(label="Start Discussion", style=discord.ButtonStyle.green, emoji="▶️")
+    async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.host_id:
+            await interaction.response.send_message(
+                "Only the game host can start discussion early.", ephemeral=True
+            )
+            return
+        await interaction.response.edit_message(content="▶️ Discussion starting!", view=None)
+        self.ready.set()
+        self.stop()
+
+    async def on_timeout(self) -> None:
+        self.ready.set()
+
+
+# ── Quick reference links ─────────────────────────────────────────────────────
+
+def _ref_links(state: GameState, back_url=None) -> str:
     """
-    Build a one-line quick-reference string with Discord jump links to the key
-    case messages posted during the reveal phase.  Returns an empty string if
-    no refs are stored yet (shouldn't happen in normal play).
+    Build a one-line quick-reference string with Discord jump links.
+    If back_url is provided, appends a "Jump back to this message" link.
     """
     parts = []
     if "scene"    in state.ref_urls:
@@ -29,32 +53,20 @@ def _ref_links(state: GameState) -> str:
         parts.append(f"[🕵️ Suspects]({state.ref_urls['suspects']})")
     if "clues"    in state.ref_urls:
         parts.append(f"[🔎 Opening Clues]({state.ref_urls['clues']})")
-    return "  ·  ".join(parts)
+    line = "  ·  ".join(parts)
+    if back_url:
+        line += f"\n[⬇️ Jump back to this message]({back_url})"
+    return line
 
 
-# ── Timer helpers ────────────────────────────────────────────────────────────
+# ── Timer helpers ─────────────────────────────────────────────────────────────
 
 def _progress_bar(elapsed: int, total: int, length: int = 20) -> str:
     filled = int((elapsed / total) * length)
     return "█" * filled + "░" * (length - filled)
 
 
-async def _countdown(
-    message: discord.Message,
-    embed_builder,
-    total: int,
-    interval: int = 10,
-) -> None:
-    """Edit a Discord message every `interval` seconds with a live countdown."""
-    elapsed = 0
-    while elapsed < total:
-        await asyncio.sleep(min(interval, total - elapsed))
-        elapsed = min(elapsed + interval, total)
-        remaining = total - elapsed
-        await message.edit(embed=embed_builder(elapsed, total, remaining))
-
-
-# ── Discussion phase ─────────────────────────────────────────────────────────
+# ── Discussion phase ──────────────────────────────────────────────────────────
 
 _DISCUSSION_PROMPTS = [
     "Where was each suspect when the crime occurred? Check their statements against the clues.",
@@ -69,42 +81,95 @@ async def run_discussion(
     state: GameState,
     round_num: int,
 ) -> None:
-    duration = config.DISCUSSION_TIME
+    duration = config.DISCUSSION_TIME_R1 if round_num == 1 else config.DISCUSSION_TIME_R2
     prompt   = _DISCUSSION_PROMPTS[min(round_num - 1, len(_DISCUSSION_PROMPTS) - 1)]
 
-    ref = _ref_links(state)
+    # ── Ready gate ────────────────────────────────────────────────────────────
+    ready_view = ReadyView(host_id=state.creator_id, timeout=120.0)
+    ready_msg  = await channel.send(
+        f"📋 **Round {round_num} — Get Ready to Discuss!**\n"
+        f"<@{state.creator_id}> — click **Start Discussion** when your team is ready.\n"
+        f"*(Auto-starts in 2 minutes if no one clicks)*",
+        view=ready_view,
+    )
+    try:
+        await asyncio.wait_for(ready_view.ready.wait(), timeout=125.0)
+    except asyncio.TimeoutError:
+        pass
+    ready_view.stop()
+    try:
+        await ready_msg.delete()
+    except Exception:
+        pass
 
-    def build_embed(elapsed, total, remaining):
+    # ── Discussion embed ──────────────────────────────────────────────────────
+    from bot.views.voting_view import CaseFileButton
+
+    class DiscussionView(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=None)
+            self.add_item(CaseFileButton())
+
+    def build_embed(elapsed, total, remaining, back_url=""):
         bar = _progress_bar(elapsed, total)
+        ref = _ref_links(state, back_url=back_url or None)
+        desc_parts = []
+        if ref:
+            desc_parts.append(f"🔗 **Quick Reference:** {ref}\n")
+        desc_parts.append(
+            f"**{len(state.remaining_suspects)} suspect{'s' if len(state.remaining_suspects) != 1 else ''} remain.**\n"
+            f"Talk it out — share theories, challenge alibis, cross-reference clues.\n\n"
+            f"💡 *{prompt}*\n\n"
+            f"`{bar}` **{remaining}s remaining**"
+        )
         embed = discord.Embed(
             title=f"💬  ROUND {round_num} of {config.MAX_ROUNDS} — DISCUSSION",
-            description=(
-                f"**{len(state.remaining_suspects)} suspect{'s' if len(state.remaining_suspects) != 1 else ''} remain.**\n"
-                f"Talk it out — share theories, challenge alibis, cross-reference clues.\n\n"
-                f"💡 *{prompt}*\n\n"
-                f"`{bar}` **{remaining}s remaining**"
-            ),
+            description="\n".join(desc_parts),
             color=discord.Color.blue(),
         )
-        if ref:
-            embed.add_field(name="Quick Reference", value=ref, inline=False)
-        embed.set_footer(text="Voting opens automatically when the timer ends.")
+        embed.set_footer(text="📋 Case File button below — full evidence summary, only visible to you.")
         return embed
 
-    msg = await channel.send(embed=build_embed(0, duration, duration))
-    await _countdown(msg, build_embed, duration)
-    await msg.edit(embed=discord.Embed(
-        title=f"💬  ROUND {round_num} — DISCUSSION CLOSED",
-        description=(
-            "Time to vote.\n\n"
-            "**Who are you confident is NOT the murderer?**\n"
-            "Click their name to clear them from suspicion."
-        ),
-        color=discord.Color.greyple(),
-    ))
+    disc_view = DiscussionView()
+    msg      = await channel.send(embed=build_embed(0, duration, duration), view=disc_view)
+    back_url = msg.jump_url
+
+    # Edit immediately to include the jump-back link now that we have the URL
+    await msg.edit(embed=build_embed(0, duration, duration, back_url=back_url), view=disc_view)
+
+    # Live countdown
+    elapsed = 0
+    while elapsed < duration:
+        await asyncio.sleep(min(10, duration - elapsed))
+        elapsed   = min(elapsed + 10, duration)
+        remaining = duration - elapsed
+        try:
+            await msg.edit(
+                embed=build_embed(elapsed, duration, remaining, back_url=back_url),
+                view=disc_view,
+            )
+        except discord.errors.NotFound:
+            break
+
+    # Close discussion
+    try:
+        await msg.edit(
+            embed=discord.Embed(
+                title=f"💬  ROUND {round_num} — DISCUSSION CLOSED",
+                description=(
+                    "Time to vote.\n\n"
+                    "**Who are you confident is NOT the murderer?**\n"
+                    "Click their name to clear them from suspicion."
+                ),
+                color=discord.Color.greyple(),
+            ),
+            view=None,
+        )
+    except Exception:
+        pass
 
 
-# ── Voting phase ─────────────────────────────────────────────────────────────
+# ── Voting phase ──────────────────────────────────────────────────────────────
 
 async def run_voting(
     channel: discord.TextChannel,
@@ -124,8 +189,6 @@ async def run_voting(
 
     duration = config.VOTING_TIME
 
-    ref = _ref_links(state)
-
     # Build the static suspect board for this round (cleared suspects already removed)
     all_suspects = [s["name"] for s in state.case["suspects"]] if state.case else state.remaining_suspects
 
@@ -138,16 +201,21 @@ async def run_voting(
                 lines.append(f"✅  {name}  — cleared")
         return "\n".join(lines)
 
-    def build_embed(elapsed=0, total=duration, remaining=duration):
+    def build_embed(elapsed=0, total=duration, remaining=duration, back_url=""):
         bar = _progress_bar(elapsed, total)
+        ref = _ref_links(state, back_url=back_url or None)
+        desc_parts = []
+        if ref:
+            desc_parts.append(f"🔗 **Quick Reference:** {ref}\n")
+        desc_parts.append(
+            "**Click a suspect you're confident is NOT the murderer.**\n"
+            "The most-voted suspect is cleared from suspicion.\n"
+            "⚠️ Clear the actual murderer and nobody wins this round.\n\n"
+            f"`{bar}` **{remaining}s remaining**"
+        )
         embed = discord.Embed(
             title=f"🗳️  ROUND {round_num} of {config.MAX_ROUNDS} — VOTE",
-            description=(
-                "**Click a suspect you're confident is NOT the murderer.**\n"
-                "The most-voted suspect is cleared from suspicion.\n"
-                "⚠️ Clear the actual murderer and nobody wins this round.\n\n"
-                f"`{bar}` **{remaining}s remaining**"
-            ),
+            description="\n".join(desc_parts),
             color=discord.Color.orange(),
         )
         # Suspect status board
@@ -162,9 +230,6 @@ async def run_voting(
             ]
             embed.add_field(name="Live Votes", value="\n".join(tally_lines), inline=False)
 
-        if ref:
-            embed.add_field(name="Quick Reference", value=ref, inline=False)
-
         voted   = len(state.confirmed_votes)
         total_p = len(state.players)
         embed.set_footer(text=f"{voted}/{total_p} detective{'s' if total_p != 1 else ''} voted  ·  📋 Case File button for full details")
@@ -172,6 +237,10 @@ async def run_voting(
 
     view = VotingView(state=state, timeout=float(duration))
     msg  = await channel.send(embed=build_embed(), view=view)
+    back_url = msg.jump_url
+
+    # Edit immediately to include jump-back link
+    await msg.edit(embed=build_embed(back_url=back_url), view=view)
 
     # Update every 10 seconds while timer runs
     elapsed = 0
@@ -186,7 +255,10 @@ async def run_voting(
             view.all_voted        = view._check_all_voted(state)
         remaining = duration - elapsed
         try:
-            await msg.edit(embed=build_embed(elapsed, duration, remaining), view=view)
+            await msg.edit(
+                embed=build_embed(elapsed, duration, remaining, back_url=back_url),
+                view=view,
+            )
         except discord.errors.NotFound:
             break
 
@@ -200,11 +272,11 @@ async def run_voting(
 
     # Disable buttons
     try:
-        await msg.edit(embed=build_embed(duration, duration, 0), view=None)
+        await msg.edit(embed=build_embed(duration, duration, 0, back_url=back_url), view=None)
     except discord.errors.NotFound:
         pass
 
-    # ── Resolve ──────────────────────────────────────────────────────────────
+    # ── Resolve ───────────────────────────────────────────────────────────────
     eliminated = state.majority_vote()
     if eliminated is None:
         tally = state.vote_tally()
@@ -259,7 +331,7 @@ async def run_voting(
     return "innocent_eliminated"
 
 
-# ── Clue reveal ──────────────────────────────────────────────────────────────
+# ── Clue reveal ───────────────────────────────────────────────────────────────
 
 async def reveal_next_clue(channel: discord.TextChannel, state: GameState) -> None:
     if not state.clue_pool:
