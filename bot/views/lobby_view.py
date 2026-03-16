@@ -6,7 +6,9 @@ from game import session_manager
 from game.phases.lobby import add_player, can_start
 from engine.prompts.genres import GENRE_MENU, genre_display_name
 from db.session import AsyncSessionLocal
-from db.repositories import limit_hit_repo
+from db.repositories import limit_hit_repo, user_repo
+from tiers.manager import TierManager
+from tiers.entitlements import Feature
 
 
 def build_lobby_embed(
@@ -154,6 +156,31 @@ class LobbyView(discord.ui.View):
                 f"The lobby is full ({self.max_players} players max).", ephemeral=True
             )
             return
+
+        # Check joining player's daily game limit
+        if not TierManager._is_dev_user(interaction.user.id):
+            async with AsyncSessionLocal() as session:
+                user_limit = await TierManager.get(
+                    session, interaction.guild_id, Feature.USER_DAILY_GAME_LIMIT
+                )
+                if user_limit is not None:
+                    allowed = await user_repo.check_daily_limit(
+                        session, interaction.user.id, interaction.guild_id, user_limit
+                    )
+                    if not allowed:
+                        await limit_hit_repo.record(
+                            session    = session,
+                            guild_id   = interaction.guild_id,
+                            user_id    = interaction.user.id,
+                            channel_id = interaction.channel_id,
+                            limit_type = "user_daily_game_limit",
+                        )
+                        await interaction.response.send_message(
+                            f"You've reached your personal limit of **{user_limit} games/day**. "
+                            "Come back tomorrow, or ask your server admin to upgrade to Premium.",
+                            ephemeral=True,
+                        )
+                        return
 
         joined = await add_player(state, interaction.user.id, interaction.user.display_name)
         if not joined:

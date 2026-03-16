@@ -22,27 +22,34 @@ async def run_final_guess(channel: discord.TextChannel, state: GameState) -> Non
     duration        = config.GUESS_TIME
     remaining_count = len(state.remaining_suspects)
 
-    embed = discord.Embed(
-        title="🎯  FINAL GUESS — Name the Murderer",
-        description=(
-            "The investigation is over. Now comes the moment of truth.\n\n"
-            f"**{remaining_count} suspect{'s remain' if remaining_count != 1 else ' remains'}.** "
-            f"Each detective gets **one guess** — make it count.\n\n"
-            f"Your answer is private. The full reveal comes after everyone guesses "
-            f"or the **{duration}-second** timer expires."
-        ),
-        color=discord.Color.dark_purple(),
-    )
-    embed.add_field(
-        name="Remaining Suspects",
-        value="\n".join(f"🔹 {s}" for s in state.remaining_suspects),
-        inline=False,
-    )
+    def build_embed(elapsed=0, total=duration, remaining=duration):
+        bar = _progress_bar(elapsed, total)
+        guessed     = sum(1 for p in state.players.values() if p.has_guessed)
+        total_p     = len(state.players)
+        embed = discord.Embed(
+            title="🎯  FINAL GUESS — Name the Murderer",
+            description=(
+                "The investigation is over. Now comes the moment of truth.\n\n"
+                f"**{remaining_count} suspect{'s remain' if remaining_count != 1 else ' remains'}.** "
+                f"Each detective gets **one guess** — make it count.\n\n"
+                f"Your answer is private. The full reveal comes after everyone guesses "
+                f"or the timer expires.\n\n"
+                f"`{bar}` **{remaining}s remaining**"
+            ),
+            color=discord.Color.dark_purple(),
+        )
+        embed.add_field(
+            name="Remaining Suspects",
+            value="\n".join(f"🔹 {s}" for s in state.remaining_suspects),
+            inline=False,
+        )
+        embed.set_footer(text=f"{guessed}/{total_p} detective{'s' if total_p != 1 else ''} guessed  ·  Answers are sealed until the reveal")
+        return embed
 
     view = GuessView(state=state, timeout=float(duration))
-    msg  = await channel.send(embed=embed, view=view)
+    msg  = await channel.send(embed=build_embed(), view=view)
 
-    # Wait for timer or all players done
+    # Live countdown
     elapsed = 0
     while elapsed < duration and not state.all_players_guessed:
         await asyncio.sleep(min(10, duration - elapsed))
@@ -51,6 +58,11 @@ async def run_final_guess(channel: discord.TextChannel, state: GameState) -> Non
         if fresh:
             state.players = fresh.players
             state.winners = fresh.winners
+        remaining = duration - elapsed
+        try:
+            await msg.edit(embed=build_embed(elapsed, duration, remaining), view=view)
+        except discord.errors.NotFound:
+            break
 
     # Final reload to capture any guesses made during the last polling interval
     fresh = await session_manager.load(state.channel_id)
@@ -60,7 +72,7 @@ async def run_final_guess(channel: discord.TextChannel, state: GameState) -> Non
 
     view.stop()
     try:
-        await msg.edit(view=None)
+        await msg.edit(embed=build_embed(duration, duration, 0), view=None)
     except discord.errors.NotFound:
         pass
 

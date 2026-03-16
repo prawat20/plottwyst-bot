@@ -123,7 +123,8 @@ class GameCog(commands.Cog):
             # lobbies both pass the limit check before either increments.
             async with AsyncSessionLocal() as session:
                 await server_repo.increment_games_today(session, state.guild_id)
-                await user_repo.increment_games_today(session, state.creator_id, state.guild_id)
+                for uid in state.players:
+                    await user_repo.increment_games_today(session, uid, state.guild_id)
 
             # Reveal phase
             await reveal_phase.run_reveal(channel, state)
@@ -153,8 +154,6 @@ class GameCog(commands.Cog):
             final_outcome = await res_phase.run_resolution(
                 channel, state, murderer_eliminated=game_over
             )
-            if game_over:
-                final_outcome = "murderer_eliminated"
 
         except RuntimeError as e:
             if str(e) == "quota_exhausted":

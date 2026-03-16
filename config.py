@@ -24,7 +24,7 @@ REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
 DISCUSSION_TIME_R1: int = int(os.getenv("DISCUSSION_TIME_R1", "180"))  # Round 1: 3 min
 DISCUSSION_TIME_R2: int = int(os.getenv("DISCUSSION_TIME_R2", "120"))  # Rounds 2-4: 2 min
 VOTING_TIME:        int = int(os.getenv("VOTING_TIME",         "30"))
-GUESS_TIME:         int = int(os.getenv("GUESS_TIME",          "30"))
+GUESS_TIME:         int = int(os.getenv("GUESS_TIME",          "45"))
 
 # ─── Local Testing ─────────────────────────────────────────────────────────────
 # Set TEST_MODE=true to skip Gemini and use pre-written sample cases instead.
