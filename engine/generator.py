@@ -5,6 +5,7 @@ Case generator — calls Gemini and returns a validated case dict.
 Retries up to MAX_RETRIES times on malformed JSON or validation failure.
 Raises RuntimeError if all retries are exhausted.
 """
+import asyncio
 import json
 import logging
 from google import genai
@@ -19,7 +20,9 @@ from engine.template_generator import generate_template_case
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 3
+MAX_RETRIES     = 3
+RPM_RETRY_WAIT  = 65   # seconds to wait before retrying an RPM-limit 429
+RPM_MAX_RETRIES = 2    # how many times to retry after an RPM 429
 
 # Initialise Gemini client once at import time.
 # If the key is the placeholder string, generation will fail gracefully.
@@ -54,6 +57,7 @@ async def generate_case(genre_override: dict | None = None) -> dict:
     prompt    = build_prompt(genre_ctx)
 
     last_error: Exception | None = None
+    rpm_retries_left = RPM_MAX_RETRIES
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             response = await _client.aio.models.generate_content(
@@ -88,12 +92,26 @@ async def generate_case(genre_override: dict | None = None) -> dict:
 
         except Exception as e:
             error_str = str(e)
-            # 429 = quota exhausted — retrying immediately won't help
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                logger.error("Gemini quota exhausted: %s", e)
+                # Daily quota is permanent — give up immediately
+                if "daily" in error_str.lower() or "per day" in error_str.lower():
+                    logger.error("Gemini daily quota exhausted: %s", e)
+                    raise RuntimeError("quota_exhausted")
+                # RPM limit is transient — wait for the window to reset and retry
+                if rpm_retries_left > 0:
+                    rpm_retries_left -= 1
+                    logger.warning(
+                        "Gemini RPM limit hit — waiting %ds before retry (%d left): %s",
+                        RPM_RETRY_WAIT, rpm_retries_left, e,
+                    )
+                    await asyncio.sleep(RPM_RETRY_WAIT)
+                    continue
+                logger.error("Gemini quota exhausted after RPM retries: %s", e)
                 raise RuntimeError("quota_exhausted")
             last_error = e
             logger.warning("Case generation attempt %d failed: %s", attempt, e)
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(2)  # brief pause between JSON/validation retries
 
     raise RuntimeError(
         f"Failed to generate a valid case after {MAX_RETRIES} attempts. "
