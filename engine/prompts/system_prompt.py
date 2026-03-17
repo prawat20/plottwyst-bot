@@ -46,7 +46,8 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no commentary:
     {{
       "name": "string — full name (6 suspects total, not the victim)",
       "gender": "M or F",
-      "relation": "string — their relationship to the victim (be specific and era-appropriate)",
+      "relation": "string — their relationship to the victim (e.g. business partner, estranged brother, hired investigator — be specific and era-appropriate. Do NOT use relationship statuses like fiancée, wife, husband as the sole descriptor — include their actual occupation or role)",
+      "occupation": "string — their real-world job or skill set (e.g. chemist, solicitor, retired colonel, seamstress, journalist). Must be a concrete profession with a plausible tool set and area of expertise — not a social role.",
       "motive": "string — specific, believable reason they might kill the victim",
       "trait": "string — one defining personality trait (e.g. methodical, paranoid, charming, volatile)",
       "last_seen": "string — specific location within the venue at time of murder",
@@ -91,7 +92,7 @@ RULES — you must follow all of these:
    - Round 3: A factual observation that dismantles the specific clearing detail from opening clue 3 — the witness recants a detail, the log is shown to be automated, the alibi is shown to be unverifiable. NO suspect is named in round 3. The discrediting is presented as a fact about the evidence, not an accusation.
    - Round 4: A CONSTRAINT CLUE — a specialist skill, physical trace, or access credential that narrows to exactly one suspect when mapped against all profiles. NO suspect is named.
 
-8. The murderer's suspect profile MUST contain specific, verifiable details (in relation, trait, last_seen, or alibi) that satisfy the round 3 and round 4 constraints uniquely. No other suspect satisfies both simultaneously.
+8. The murderer's suspect profile MUST contain specific, verifiable details (in occupation, trait, last_seen, or alibi) that satisfy the round 3 and round 4 constraints uniquely. No other suspect satisfies both simultaneously. BEFORE writing any clues, mentally verify: does the murderer's occupation or a specific attribute in their profile directly support the constraint you plan to use? If not, change either the murderer's profile or the constraint until they align. Never write a constraint clue that references a skill, tool, or knowledge area not present in the murderer's profile.
 9. The murderer's alibi must sound solid regardless of arc variant chosen.
 10. Round 3 and round 4 clues must NEVER name any suspect. They are factual observations about the crime or the evidence, not accusations.
 11. The solution paragraph must explicitly state: (a) what the round 3 mechanism is and how it maps to the murderer's profile, (b) what the round 4 constraint is and which attribute satisfies it, (c) why no other suspect satisfies both.

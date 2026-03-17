@@ -26,9 +26,11 @@ class SuspectFilesView(discord.ui.View):
             title=f"🕵️  Suspect {self.page + 1} of {total}  ·  {s['name']}",
             color=discord.Color.blurple(),
         )
+        occupation = s.get("occupation", "")
+        profile_line = f"**Relation:** {s['relation']}  ·  **Occupation:** {occupation}  ·  **Last Seen:** {s['last_seen']}\n*{s['trait']}*" if occupation else f"**Relation:** {s['relation']}  ·  **Last Seen:** {s['last_seen']}\n*{s['trait']}*"
         embed.add_field(
             name="Profile",
-            value=f"**Relation:** {s['relation']}  ·  **Last Seen:** {s['last_seen']}\n*{s['trait']}*",
+            value=profile_line,
             inline=False,
         )
         embed.add_field(name="Motive",          value=s["motive"],             inline=False)

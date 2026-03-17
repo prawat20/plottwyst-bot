@@ -30,7 +30,7 @@ def validate_case(case: dict) -> dict:
         raise ValueError("murderer and red_herring cannot be the same suspect")
 
     for s in suspects:
-        _require_keys(s, ["name", "gender", "relation", "motive", "trait", "last_seen", "alibi"])
+        _require_keys(s, ["name", "gender", "relation", "occupation", "motive", "trait", "last_seen", "alibi"])
 
     # Normalise is_murderer / is_red_herring flags (Gemini sometimes forgets)
     for s in suspects:
