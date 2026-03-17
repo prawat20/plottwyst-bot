@@ -13,8 +13,8 @@ class VotingView(discord.ui.View):
         self.all_voted = False
 
         # Suspect vote buttons (row 0 / 1 depending on count)
-        for suspect in state.remaining_suspects:
-            self.add_item(SuspectVoteButton(suspect))
+        for i, suspect in enumerate(state.remaining_suspects):
+            self.add_item(SuspectVoteButton(suspect, i))
 
         # Case File reference button always on the last row
         self.add_item(CaseFileButton())
@@ -26,11 +26,11 @@ class VotingView(discord.ui.View):
 # ── Vote buttons ──────────────────────────────────────────────────────────────
 
 class SuspectVoteButton(discord.ui.Button):
-    def __init__(self, suspect_name: str):
+    def __init__(self, suspect_name: str, index: int):
         super().__init__(
-            label=suspect_name,
+            label=suspect_name[:80],  # Discord button label max 80 chars
             style=discord.ButtonStyle.primary,
-            custom_id=f"vote_{suspect_name.replace(' ', '_')}",
+            custom_id=f"vote_{index}",  # index-based to avoid 100-char custom_id limit
         )
         self.suspect_name = suspect_name
 
@@ -48,9 +48,7 @@ class SuspectVoteButton(discord.ui.Button):
             await interaction.response.send_message("You've already cast your vote.", ephemeral=True)
             return
 
-        state.votes[interaction.user.id] = self.suspect_name
-        await session_manager.save(state)
-
+        # Don't save pending vote yet — only persist on confirmation to avoid race conditions
         view = ConfirmVoteView(state=state, suspect_name=self.suspect_name)
         await interaction.response.send_message(
             f"You're clearing **{self.suspect_name}** as innocent — removing them from suspicion.\n"
@@ -91,7 +89,8 @@ class ConfirmVoteView(discord.ui.View):
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         state = await session_manager.load(self.state.channel_id)
-        if state and interaction.user.id in state.votes:
+        # Only remove pending vote if not already confirmed — never undo a confirmed vote
+        if state and interaction.user.id in state.votes and interaction.user.id not in state.confirmed_votes:
             del state.votes[interaction.user.id]
             await session_manager.save(state)
         await interaction.response.edit_message(content="Vote cancelled.", view=None)

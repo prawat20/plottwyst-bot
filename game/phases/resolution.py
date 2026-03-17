@@ -3,6 +3,7 @@ from __future__ import annotations
 Resolution phase — final guess, winner reveal, and case solution.
 """
 import asyncio
+import logging
 import discord
 
 import config
@@ -10,6 +11,8 @@ from game.state import GameState
 from game import session_manager
 from game.phases.round import _progress_bar
 from game.phases.reveal import CLUE_TYPE_EMOJI
+
+logger = logging.getLogger(__name__)
 
 
 async def run_final_guess(channel: discord.TextChannel, state: GameState) -> None:
@@ -202,8 +205,11 @@ async def run_resolution(
     # This gives the narrative up to ~3 900 chars and each detail field its own budget.
 
     murderer_profile = next(
-        (s for s in state.case["suspects"] if s["name"] == murderer_name), {}
+        (s for s in state.case["suspects"] if s["name"] == murderer_name), None
     )
+    if murderer_profile is None:
+        logger.warning("Murderer '%s' not found in suspects list — case data may be corrupted", murderer_name)
+        murderer_profile = {}
 
     def _cap(text: str, limit: int) -> str:
         """Hard-cap a string to `limit` chars, appending … if truncated."""

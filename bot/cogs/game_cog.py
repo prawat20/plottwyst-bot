@@ -149,6 +149,11 @@ class GameCog(commands.Cog):
             if not game_over:
                 # Final guess phase
                 await res_phase.run_final_guess(channel, state)
+                # Final reload to capture any guesses made in the last polling interval
+                fresh = await session_manager.load(state.channel_id)
+                if fresh:
+                    state.players = fresh.players
+                    state.winners = fresh.winners
 
             final_outcome = await res_phase.run_resolution(
                 channel, state, murderer_eliminated=game_over

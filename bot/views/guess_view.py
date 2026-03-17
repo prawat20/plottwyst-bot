@@ -8,16 +8,16 @@ from game import session_manager
 class GuessView(discord.ui.View):
     def __init__(self, state: GameState, timeout: float):
         super().__init__(timeout=timeout)
-        for suspect in state.remaining_suspects:
-            self.add_item(GuessButton(suspect))
+        for i, suspect in enumerate(state.remaining_suspects):
+            self.add_item(GuessButton(suspect, i))
 
 
 class GuessButton(discord.ui.Button):
-    def __init__(self, suspect_name: str):
+    def __init__(self, suspect_name: str, index: int):
         super().__init__(
-            label=suspect_name,
+            label=suspect_name[:80],  # Discord button label max 80 chars
             style=discord.ButtonStyle.danger,
-            custom_id=f"guess_{suspect_name.replace(' ', '_')}",
+            custom_id=f"guess_{index}",  # index-based to avoid 100-char custom_id limit
         )
         self.suspect_name = suspect_name
 

@@ -166,7 +166,7 @@ async def run_discussion(
         if ref:
             desc_parts.append(f"🔗 **Quick Reference:** {ref}\n")
         desc_parts.append(
-            f"**{len(state.remaining_suspects)} suspect{'s' if len(state.remaining_suspects) != 1 else ''} remain.**\n"
+            f"**{len(state.remaining_suspects)} suspect{'s' if len(state.remaining_suspects) != 1 else ''} remain{'s' if len(state.remaining_suspects) == 1 else ''}.**\n"
             f"Talk it out — share theories, challenge alibis, cross-reference clues.\n\n"
             f"💡 *{prompt}*\n\n"
             f"`{bar}` **{remaining}s remaining**"
@@ -295,9 +295,11 @@ async def run_voting(
         elapsed = min(elapsed + 10, duration)
         fresh = await session_manager.load(state.channel_id)
         if fresh:
-            state.votes           = fresh.votes
-            state.confirmed_votes = fresh.confirmed_votes
-            view.all_voted        = view._check_all_voted(state)
+            state.votes              = fresh.votes
+            state.confirmed_votes    = fresh.confirmed_votes
+            state.players            = fresh.players
+            state.remaining_suspects = fresh.remaining_suspects
+            view.all_voted           = view._check_all_voted(state)
         remaining = duration - elapsed
         try:
             await msg.edit(embed=build_embed(elapsed, duration, remaining), view=view)
