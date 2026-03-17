@@ -19,6 +19,10 @@ def validate_case(case: dict) -> dict:
     if len(suspects) != 6:
         raise ValueError(f"Expected 6 suspects, got {len(suspects)}")
 
+    # Validate per-suspect keys first so we can safely access s["name"] below
+    for s in suspects:
+        _require_keys(s, ["name", "gender", "relation", "occupation", "motive", "trait", "last_seen", "alibi"])
+
     names = [s["name"] for s in suspects]
 
     # Murderer and red herring must reference actual suspects
@@ -28,9 +32,6 @@ def validate_case(case: dict) -> dict:
         raise ValueError(f"red_herring '{case['red_herring']}' not in suspect list")
     if case["murderer"] == case["red_herring"]:
         raise ValueError("murderer and red_herring cannot be the same suspect")
-
-    for s in suspects:
-        _require_keys(s, ["name", "gender", "relation", "occupation", "motive", "trait", "last_seen", "alibi"])
 
     # Normalise is_murderer / is_red_herring flags (Gemini sometimes forgets)
     for s in suspects:
