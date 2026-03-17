@@ -478,6 +478,7 @@ def generate_template_case(genre_key: str | None = None) -> dict:
             "name":           s["name"],
             "gender":         s["gender"],
             "relation":       s["relation"],
+            "occupation":     s["relation"],  # template relations are already occupation-based
             "motive":         s["motive"],
             "trait":          s["trait"],
             "last_seen":      s["location"],
