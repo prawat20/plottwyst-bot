@@ -95,8 +95,8 @@ async def generate_case(genre_override: dict | None = None) -> dict:
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                 # Daily quota is permanent — give up immediately
                 if "daily" in error_str.lower() or "per day" in error_str.lower():
-                    logger.error("Gemini daily quota exhausted: %s", e)
-                    raise RuntimeError("quota_exhausted")
+                    logger.warning("Gemini daily quota exhausted — falling back to template case")
+                    return _template_fallback()
                 # RPM limit is transient — wait for the window to reset and retry
                 if rpm_retries_left > 0:
                     rpm_retries_left -= 1
@@ -106,14 +106,20 @@ async def generate_case(genre_override: dict | None = None) -> dict:
                     )
                     await asyncio.sleep(RPM_RETRY_WAIT)
                     continue
-                logger.error("Gemini quota exhausted after RPM retries: %s", e)
-                raise RuntimeError("quota_exhausted")
+                # RPM retries exhausted — fall back
+                logger.warning("Gemini RPM retries exhausted — falling back to template case")
+                return _template_fallback()
             last_error = e
             logger.warning("Case generation attempt %d failed: %s", attempt, e)
             if attempt < MAX_RETRIES:
                 await asyncio.sleep(2)  # brief pause between JSON/validation retries
 
-    raise RuntimeError(
-        f"Failed to generate a valid case after {MAX_RETRIES} attempts. "
-        f"Last error: {last_error}"
-    )
+    logger.warning("All Gemini attempts failed — falling back to template case: %s", last_error)
+    return _template_fallback()
+
+
+def _template_fallback() -> dict:
+    """Return a template case and flag it so the game loop can notify players."""
+    case = generate_template_case()
+    case["_fallback"] = True
+    return case

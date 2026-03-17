@@ -125,6 +125,11 @@ class GameCog(commands.Cog):
             state.case = case
             await session_manager.save(state)
 
+            if case.get("_fallback"):
+                await channel.send(
+                    "📦  *The AI story generator is taking a break — playing a classic case from our archives.*"
+                )
+
             # Reveal phase
             await reveal_phase.run_reveal(channel, state)
             await asyncio.sleep(2)
