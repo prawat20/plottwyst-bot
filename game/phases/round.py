@@ -185,12 +185,18 @@ async def run_discussion(
     # Edit old reveal messages so players can jump back from there
     await _add_return_navigation(channel, state, round_num, back_url=msg.jump_url)
 
-    # Live countdown
+    # Live countdown — wakes immediately if host clicks Vote Now
     elapsed = 0
     while elapsed < duration and not disc_view.vote_early.is_set():
-        await asyncio.sleep(min(10, duration - elapsed))
-        elapsed   = min(elapsed + 10, duration)
+        tick = min(10, duration - elapsed)
+        try:
+            await asyncio.wait_for(disc_view.vote_early.wait(), timeout=tick)
+        except asyncio.TimeoutError:
+            pass
+        elapsed   = min(elapsed + tick, duration)
         remaining = duration - elapsed
+        if disc_view.vote_early.is_set():
+            break
         try:
             await msg.edit(
                 embed=build_embed(elapsed, duration, remaining),
