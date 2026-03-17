@@ -144,7 +144,19 @@ async def run_discussion(
     class DiscussionView(discord.ui.View):
         def __init__(self):
             super().__init__(timeout=None)
+            self.vote_early = asyncio.Event()
             self.add_item(CaseFileButton())
+
+        @discord.ui.button(label="Vote Now", style=discord.ButtonStyle.danger, emoji="🗳️", row=1)
+        async def vote_now(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if interaction.user.id != state.creator_id:
+                await interaction.response.send_message(
+                    "Only the game host can end discussion early.", ephemeral=True
+                )
+                return
+            button.disabled = True
+            await interaction.response.edit_message(view=self)
+            self.vote_early.set()
 
     ref = _ref_links(state)
 
@@ -175,7 +187,7 @@ async def run_discussion(
 
     # Live countdown
     elapsed = 0
-    while elapsed < duration:
+    while elapsed < duration and not disc_view.vote_early.is_set():
         await asyncio.sleep(min(10, duration - elapsed))
         elapsed   = min(elapsed + 10, duration)
         remaining = duration - elapsed
