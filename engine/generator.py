@@ -31,7 +31,7 @@ _client = genai.Client(api_key=config.GEMINI_API_KEY)
 _generation_config = types.GenerateContentConfig(
     response_mime_type="application/json",
     temperature=1.0,        # High creativity for unique stories
-    max_output_tokens=4096,
+    max_output_tokens=8192,
 )
 
 
