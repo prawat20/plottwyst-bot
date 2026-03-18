@@ -20,9 +20,11 @@ from engine.template_generator import generate_template_case
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES     = 3
-RPM_RETRY_WAIT  = 65   # seconds to wait before retrying an RPM-limit 429
-RPM_MAX_RETRIES = 2    # how many times to retry after an RPM 429
+MAX_RETRIES      = 3
+RPM_RETRY_WAIT   = 65   # seconds to wait before retrying an RPM-limit 429
+RPM_MAX_RETRIES  = 1    # gemini-2.5-flash-preview: 10 RPM — one retry is enough
+OVERLOAD_WAIT    = 15   # seconds to wait on 503 model-overloaded before retrying
+OVERLOAD_RETRIES = 2    # retry twice on transient 503s before falling back
 
 # Initialise Gemini client once at import time.
 # If the key is the placeholder string, generation will fail gracefully.
@@ -31,7 +33,10 @@ _client = genai.Client(api_key=config.GEMINI_API_KEY)
 _generation_config = types.GenerateContentConfig(
     response_mime_type="application/json",
     temperature=0.9,        # High creativity, slightly reduced for JSON reliability
-    max_output_tokens=8192,
+    max_output_tokens=16384,
+    # Disable thinking — it burns tokens and causes JSON truncation/corruption
+    # on structured output tasks. Creativity comes from temperature, not thinking.
+    thinking_config=types.ThinkingConfig(thinking_budget=0),
 )
 
 
@@ -57,8 +62,11 @@ async def generate_case(genre_override: dict | None = None) -> dict:
     prompt    = build_prompt(genre_ctx)
 
     last_error: Exception | None = None
-    rpm_retries_left = RPM_MAX_RETRIES
-    for attempt in range(1, MAX_RETRIES + 1):
+    rpm_retries_left      = RPM_MAX_RETRIES
+    overload_retries_left = OVERLOAD_RETRIES
+    attempt = 0
+    while attempt < MAX_RETRIES:
+        attempt += 1
         try:
             response = await _client.aio.models.generate_content(
                 model=config.GEMINI_MODEL,
@@ -93,21 +101,40 @@ async def generate_case(genre_override: dict | None = None) -> dict:
         except Exception as e:
             error_str = str(e)
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                # Daily quota is permanent — give up immediately
-                if "daily" in error_str.lower() or "per day" in error_str.lower():
-                    logger.warning("Gemini daily quota exhausted — falling back to template case")
+                # Permanent quota (daily limit or limit=0) — give up immediately
+                if (
+                    "daily" in error_str.lower()
+                    or "per day" in error_str.lower()
+                    or "PerDay" in error_str
+                    or "limit: 0" in error_str
+                    or "freetier" in error_str.lower().replace("-", "").replace("_", "")
+                ):
+                    logger.warning("Gemini quota permanently exhausted — falling back to template case")
                     return _template_fallback()
-                # RPM limit is transient — wait for the window to reset and retry
+                # RPM limit is transient — wait and retry without using a JSON attempt
                 if rpm_retries_left > 0:
                     rpm_retries_left -= 1
+                    attempt -= 1   # don't count this against JSON retries
                     logger.warning(
                         "Gemini RPM limit hit — waiting %ds before retry (%d left): %s",
                         RPM_RETRY_WAIT, rpm_retries_left, e,
                     )
                     await asyncio.sleep(RPM_RETRY_WAIT)
                     continue
-                # RPM retries exhausted — fall back
                 logger.warning("Gemini RPM retries exhausted — falling back to template case")
+                return _template_fallback()
+            if "503" in error_str or "UNAVAILABLE" in error_str:
+                # Transient overload — wait and retry without using a JSON attempt
+                if overload_retries_left > 0:
+                    overload_retries_left -= 1
+                    attempt -= 1   # don't count this against JSON retries
+                    logger.warning(
+                        "Gemini 503 overload — waiting %ds before retry (%d left): %s",
+                        OVERLOAD_WAIT, overload_retries_left, e,
+                    )
+                    await asyncio.sleep(OVERLOAD_WAIT)
+                    continue
+                logger.warning("Gemini 503 retries exhausted — falling back to template case")
                 return _template_fallback()
             last_error = e
             logger.warning("Case generation attempt %d failed: %s", attempt, e)

@@ -38,13 +38,15 @@ _LAST = [
 
 def _name(gender: str, exclude: list[str]) -> str:
     pool = _FIRST_M if gender == "M" else _FIRST_F
-    used_lasts = {n.rsplit(" ", 1)[-1] for n in exclude if " " in n}
-    avail_lasts = [l for l in _LAST if l not in used_lasts] or _LAST
+    used_firsts = {n.split(" ", 1)[0] for n in exclude if " " in n}
+    used_lasts  = {n.rsplit(" ", 1)[-1] for n in exclude if " " in n}
+    avail_firsts = [f for f in pool if f not in used_firsts] or pool
+    avail_lasts  = [l for l in _LAST if l not in used_lasts] or _LAST
     for _ in range(50):
-        full = f"{random.choice(pool)} {random.choice(avail_lasts)}"
+        full = f"{random.choice(avail_firsts)} {random.choice(avail_lasts)}"
         if full not in exclude:
             return full
-    return f"{random.choice(pool)} {random.choice(avail_lasts)}"
+    return f"{random.choice(avail_firsts)} {random.choice(avail_lasts)}"
 
 
 # ── Genre definitions ─────────────────────────────────────────────────────────
@@ -523,7 +525,7 @@ def generate_template_case(genre_key: str | None = None) -> dict:
             role_key  = "innocent"
             is_m, is_rh = False, False
 
-        alibi_loc = murder_location if role_key in ("murderer", "red_herring") else random.choice(safe_locs)
+        alibi_loc = s["location"]  # matches last_seen — keeps alibi consistent with location
         alibi     = build_alibi(role_key, alibi_loc)
 
         suspects_out.append({
