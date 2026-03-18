@@ -390,13 +390,24 @@ async def run_voting(
     state.remaining_suspects.remove(eliminated)
     remaining = len(state.remaining_suspects)
     await session_manager.save(state)
-    result_embed = discord.Embed(
-        title="✅  SUSPECT CLEARED",
-        description=(
+
+    if state.voting_mode == "silent":
+        # Neutral language — don't reveal innocence; resolution handles the truth
+        description = (
+            f"**{eliminated}** has been cleared from active questioning.\n\n"
+            f"**{remaining} suspect{'s' if remaining != 1 else ''} remain.** "
+            f"{'The investigation continues.' if remaining > 1 else 'One suspect remains.'}"
+        )
+    else:
+        description = (
             f"**{eliminated}** has been eliminated from suspicion — they were innocent.\n\n"
             f"**{remaining} suspect{'s' if remaining != 1 else ''} remain.** "
             f"{'One of them is the murderer.' if remaining > 1 else 'The murderer is the last one standing.'}"
-        ),
+        )
+
+    result_embed = discord.Embed(
+        title="✅  SUSPECT CLEARED",
+        description=description,
         color=discord.Color.green(),
     )
     await channel.send(embed=result_embed)
