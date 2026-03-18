@@ -132,9 +132,9 @@ class AdminCog(commands.Cog):
             if guild:
                 member = guild.get_member(row["user_id"])
             name = (
-                member.display_name          # live Discord cache (best)
-                or row.get("display_name")   # cached from last game played
-                or f"User `{row['user_id']}`"  # fallback: at least show the ID
+                (member.display_name if member else None)
+                or row.get("display_name")
+                or f"User `{row['user_id']}`"
             )
             users_embed.add_field(
                 name=name,
