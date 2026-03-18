@@ -156,9 +156,10 @@ class LobbyView(discord.ui.View):
                 "Only the host can change game settings.", ephemeral=True
             )
             return
-        from bot.views.settings_view import SettingsView, _build_settings_embed
+        from bot.views.settings_view import SettingsView
+        view = SettingsView(lobby_view=self)
         await interaction.response.send_message(
-            embed=_build_settings_embed(), view=SettingsView(lobby_view=self), ephemeral=True
+            embed=view.current_embed(), view=view, ephemeral=True
         )
 
     @discord.ui.button(label="Join Game", style=discord.ButtonStyle.success, emoji="🕵️", row=2)

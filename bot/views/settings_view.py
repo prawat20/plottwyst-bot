@@ -1,47 +1,27 @@
 from __future__ import annotations
 """
-Settings panel — ephemeral View shown to the host in the lobby.
+Settings panel — button-based, ephemeral, host-only.
 
-Free settings (all hosts): Discussion Speed, Voting Time, Guess Time, Voting Mode.
-Locked settings (shown, not interactive): Difficulty, Custom Story.
+Layout (5 rows):
+  Row 0  ⏱️ Discussion Speed  — [🐢 Slow] [⚖️ Normal] [⚡ Fast]
+  Row 1  🗳️ Voting Time       — [30s] [60s] [90s]
+  Row 2  🎯 Final Guess Time  — [30s] [45s] [60s]
+  Row 3  🗡️ Voting Mode       — [🗡️ Classic] [🔍 Silent Investigation]
+  Row 4  Premium + Done       — [🔒 Difficulty] [🔒 Custom Story] [✅ Done]
+
+Active selection = ButtonStyle.primary (blue).
+Inactive options = ButtonStyle.secondary (grey).
+Premium buttons  = disabled grey.
+
+The embed updates live on every button click so the host always sees the
+current value for each setting without having to map rows mentally.
+Changes are persisted to Redis only when Done is clicked.
 """
 import discord
 from game import session_manager
 
-# ── Option definitions ────────────────────────────────────────────────────────
 
-_SPEED_OPTIONS = [
-    discord.SelectOption(label="🐢  Slow",    value="slow",   description="Discussion: 4 min R1  ·  3 min R2+"),
-    discord.SelectOption(label="⚖️  Normal",  value="normal", description="Discussion: 3 min R1  ·  2 min R2+  (default)", default=True),
-    discord.SelectOption(label="⚡  Fast",    value="fast",   description="Discussion: 90s R1  ·  60s R2+"),
-]
-
-_VOTE_TIME_OPTIONS = [
-    discord.SelectOption(label="30 seconds", value="30", description="Default", default=True),
-    discord.SelectOption(label="60 seconds", value="60"),
-    discord.SelectOption(label="90 seconds", value="90"),
-]
-
-_GUESS_TIME_OPTIONS = [
-    discord.SelectOption(label="30 seconds", value="30"),
-    discord.SelectOption(label="45 seconds", value="45", description="Default", default=True),
-    discord.SelectOption(label="60 seconds", value="60"),
-]
-
-_MODE_OPTIONS = [
-    discord.SelectOption(
-        label="🗡️  Classic",
-        value="classic",
-        description="Vote out murderer = game ends immediately",
-        default=True,
-    ),
-    discord.SelectOption(
-        label="🔍  Silent Investigation",
-        value="silent",
-        description="Game always runs to final guess — no mid-game reveal",
-    ),
-]
-
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _times_from_speed(speed: str) -> tuple[int, int]:
     return {"slow": (240, 180), "normal": (180, 120), "fast": (90, 60)}[speed]
@@ -53,115 +33,157 @@ def _speed_from_times(r1: int, r2: int) -> str:
     return "normal"
 
 
-def _mark_default(options: list[discord.SelectOption], value: str) -> list[discord.SelectOption]:
-    for opt in options:
-        opt.default = (opt.value == value)
-    return options
+_SPEED_LABEL = {"slow": "🐢  Slow", "normal": "⚖️  Normal", "fast": "⚡  Fast"}
+_MODE_LABEL  = {"classic": "🗡️  Classic", "silent": "🔍  Silent Investigation"}
 
 
-# ── Settings embed ────────────────────────────────────────────────────────────
+# ── Live embed ────────────────────────────────────────────────────────────────
 
-def _build_settings_embed() -> discord.Embed:
+def _build_embed(speed: str, vote: str, guess: str, mode: str) -> discord.Embed:
     embed = discord.Embed(
         title="⚙️  Game Settings",
-        description=(
-            "Adjust settings below — changes apply when you click **Apply**.\n\n"
-            "🔒 **Premium settings** are shown below but require an upgrade to unlock."
-        ),
+        description="Select an option in each row. Hit **✅ Done** to save.",
         color=discord.Color.blurple(),
     )
+    embed.add_field(name="⏱️  Discussion Speed",  value=_SPEED_LABEL.get(speed, speed),  inline=True)
+    embed.add_field(name="🗳️  Voting Time",        value=f"{vote}s",                       inline=True)
+    embed.add_field(name="🎯  Final Guess Time",   value=f"{guess}s",                      inline=True)
+    embed.add_field(name="🗡️  Voting Mode",        value=_MODE_LABEL.get(mode, mode),      inline=False)
     embed.add_field(
-        name="🔒  Difficulty",
-        value="Easy / Medium / Hard  ·  *Upgrade to Premium to unlock*",
+        name="🔒  Premium (locked)",
+        value="**Difficulty** · **Custom Story**  —  `/premium info` to unlock",
         inline=False,
     )
-    embed.add_field(
-        name="🔒  Custom Story",
-        value="Seed your own victim and setting  ·  *Upgrade to Premium to unlock*",
-        inline=False,
-    )
-    embed.set_footer(text="Free settings apply to all hosts  ·  /premium info for upgrades")
     return embed
+
+
+# ── Option button ─────────────────────────────────────────────────────────────
+
+class _OptionBtn(discord.ui.Button):
+    """One selectable option within a setting group."""
+
+    def __init__(self, label: str, value: str, group: str, active: bool, row: int):
+        super().__init__(
+            label=label,
+            style=discord.ButtonStyle.primary if active else discord.ButtonStyle.secondary,
+            row=row,
+        )
+        self.value = value
+        self.group = group  # "speed" | "vote_time" | "guess_time" | "mode"
+
+    async def callback(self, interaction: discord.Interaction):
+        view: SettingsView = self.view  # type: ignore[assignment]
+        # Update the tracked value for this group
+        setattr(view, f"_{self.group}", self.value)
+        view._sync_styles()
+        await interaction.response.edit_message(embed=view.current_embed(), view=view)
 
 
 # ── Settings View ─────────────────────────────────────────────────────────────
 
 class SettingsView(discord.ui.View):
-    """
-    Ephemeral settings panel. Receives the LobbyView so it can refresh the
-    lobby embed and pass the selected genre key back correctly.
-    """
+    """Ephemeral button-based settings panel. Pass lobby_view on construction."""
 
     def __init__(self, lobby_view: "LobbyView"):  # type: ignore[name-defined]
         super().__init__(timeout=120)
         self.lobby_view = lobby_view
         state = lobby_view.state
 
-        # Resolve current values for default selection
-        current_speed = _speed_from_times(state.discussion_time_r1, state.discussion_time_r2)
-        current_vote  = str(state.voting_time)
-        current_guess = str(state.guess_time)
-        current_mode  = state.voting_mode
+        # Current values — mutated by button clicks before Done saves them
+        self._speed      = _speed_from_times(state.discussion_time_r1, state.discussion_time_r2)
+        self._vote_time  = str(state.voting_time)
+        self._guess_time = str(state.guess_time)
+        self._mode       = state.voting_mode
 
-        self.add_item(discord.ui.Select(
-            placeholder="⏱️  Discussion Speed",
-            options=_mark_default(list(_SPEED_OPTIONS), current_speed),
-            custom_id="speed",
-            row=0,
-        ))
-        self.add_item(discord.ui.Select(
-            placeholder="🗳️  Voting Time",
-            options=_mark_default(list(_VOTE_TIME_OPTIONS), current_vote),
-            custom_id="vote_time",
-            row=1,
-        ))
-        self.add_item(discord.ui.Select(
-            placeholder="🎯  Final Guess Time",
-            options=_mark_default(list(_GUESS_TIME_OPTIONS), current_guess),
-            custom_id="guess_time",
-            row=2,
-        ))
-        self.add_item(discord.ui.Select(
-            placeholder="🗡️  Voting Mode",
-            options=_mark_default(list(_MODE_OPTIONS), current_mode),
-            custom_id="voting_mode",
-            row=3,
-        ))
+        self._build_buttons()
 
-    def _get_select_value(self, custom_id: str) -> str | None:
+    # ── Button construction ───────────────────────────────────────────────────
+
+    def _build_buttons(self) -> None:
+        # Row 0 — Discussion Speed
+        for label, value in [("🐢  Slow", "slow"), ("⚖️  Normal", "normal"), ("⚡  Fast", "fast")]:
+            self.add_item(_OptionBtn(label, value, "speed", value == self._speed, row=0))
+
+        # Row 1 — Voting Time
+        for label, value in [("Vote: 30s", "30"), ("Vote: 60s", "60"), ("Vote: 90s", "90")]:
+            self.add_item(_OptionBtn(label, value, "vote_time", value == self._vote_time, row=1))
+
+        # Row 2 — Final Guess Time
+        for label, value in [("Guess: 30s", "30"), ("Guess: 45s", "45"), ("Guess: 60s", "60")]:
+            self.add_item(_OptionBtn(label, value, "guess_time", value == self._guess_time, row=2))
+
+        # Row 3 — Voting Mode
+        for label, value in [("🗡️  Classic", "classic"), ("🔍  Silent Investigation", "silent")]:
+            self.add_item(_OptionBtn(label, value, "mode", value == self._mode, row=3))
+
+        # Row 4 — Premium (locked) + Done
+        self.add_item(discord.ui.Button(
+            label="🔒  Difficulty",
+            style=discord.ButtonStyle.secondary,
+            disabled=True,
+            row=4,
+        ))
+        self.add_item(discord.ui.Button(
+            label="🔒  Custom Story",
+            style=discord.ButtonStyle.secondary,
+            disabled=True,
+            row=4,
+        ))
+        done_btn = discord.ui.Button(
+            label="✅  Done",
+            style=discord.ButtonStyle.success,
+            row=4,
+        )
+        done_btn.callback = self._on_done
+        self.add_item(done_btn)
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _sync_styles(self) -> None:
+        """Re-colour buttons after a selection change."""
+        current = {
+            "speed":      self._speed,
+            "vote_time":  self._vote_time,
+            "guess_time": self._guess_time,
+            "mode":       self._mode,
+        }
         for item in self.children:
-            if isinstance(item, discord.ui.Select) and item.custom_id == custom_id:
-                return item.values[0] if item.values else None
-        return None
+            if isinstance(item, _OptionBtn):
+                item.style = (
+                    discord.ButtonStyle.primary
+                    if item.value == current[item.group]
+                    else discord.ButtonStyle.secondary
+                )
 
-    @discord.ui.button(label="Apply Settings", style=discord.ButtonStyle.success, emoji="✅", row=4)
-    async def apply(self, interaction: discord.Interaction, button: discord.ui.Button):
+    def current_embed(self) -> discord.Embed:
+        return _build_embed(self._speed, self._vote_time, self._guess_time, self._mode)
+
+    # ── Done callback ─────────────────────────────────────────────────────────
+
+    async def _on_done(self, interaction: discord.Interaction) -> None:
         from bot.views.lobby_view import build_lobby_embed
 
-        speed      = self._get_select_value("speed")      or "normal"
-        vote_time  = self._get_select_value("vote_time")  or "30"
-        guess_time = self._get_select_value("guess_time") or "45"
-        mode       = self._get_select_value("voting_mode") or "classic"
+        r1, r2 = _times_from_speed(self._speed)
 
-        r1, r2 = _times_from_speed(speed)
-
-        # Load state, apply, save
         state = await session_manager.load(self.lobby_view.state.channel_id)
         if state is None:
-            await interaction.response.send_message("Lobby no longer exists.", ephemeral=True)
+            await interaction.response.edit_message(
+                embed=discord.Embed(description="Lobby no longer exists.", color=discord.Color.red()),
+                view=None,
+            )
             return
 
         state.discussion_time_r1 = r1
         state.discussion_time_r2 = r2
-        state.voting_time        = int(vote_time)
-        state.guess_time         = int(guess_time)
-        state.voting_mode        = mode
+        state.voting_time        = int(self._vote_time)
+        state.guess_time         = int(self._guess_time)
+        state.voting_mode        = self._mode
         await session_manager.save(state)
 
-        # Keep lobby_view in sync so Start picks up current state
+        # Keep lobby_view in sync so Start picks up the new values
         self.lobby_view.state = state
 
-        # Refresh lobby embed to show settings summary
+        # Refresh the lobby embed so everyone sees the updated settings summary
         if self.lobby_view.lobby_msg:
             try:
                 await self.lobby_view.lobby_msg.edit(
@@ -175,7 +197,11 @@ class SettingsView(discord.ui.View):
             except Exception:
                 pass
 
-        await interaction.response.send_message(
-            "✅ Settings applied!", ephemeral=True
+        await interaction.response.edit_message(
+            embed=discord.Embed(
+                description="✅  Settings saved!",
+                color=discord.Color.green(),
+            ),
+            view=None,
         )
         self.stop()
