@@ -1,6 +1,6 @@
 from __future__ import annotations
 """User stats database operations."""
-from datetime import datetime, date
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.models import User
@@ -27,10 +27,10 @@ async def check_daily_limit(
 ) -> bool:
     """Returns True if this user can start another game today."""
     user  = await get_or_create(session, user_id, guild_id)
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     if user.games_date is None or user.games_date.date() < today:
         user.games_today = 0
-        user.games_date  = datetime.utcnow()
+        user.games_date  = datetime.now(timezone.utc)
         await session.commit()
     return user.games_today < limit
 
@@ -42,10 +42,10 @@ async def increment_games_today(
 ) -> None:
     """Increment this user's daily game counter, resetting if it's a new day."""
     user  = await get_or_create(session, user_id, guild_id)
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     if user.games_date is None or user.games_date.date() < today:
         user.games_today = 0
-        user.games_date  = datetime.utcnow()
+        user.games_date  = datetime.now(timezone.utc)
     user.games_today += 1
     await session.commit()
 

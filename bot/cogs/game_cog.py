@@ -164,33 +164,6 @@ class GameCog(commands.Cog):
                 channel, state, murderer_eliminated=game_over
             )
 
-        except RuntimeError as e:
-            if str(e) == "quota_exhausted":
-                await channel.send(
-                    embed=discord.Embed(
-                        title="⏳  AI Quota Reached",
-                        description=(
-                            "The AI story generator has hit its daily quota.\n\n"
-                            "This resets every 24 hours — try again later.\n"
-                            "In the meantime, the host can set `TEST_MODE=true` in `.env` "
-                            "to play with pre-built cases at no cost."
-                        ),
-                        color=discord.Color.orange(),
-                    )
-                )
-            else:
-                logger.exception("Game loop error: %s", e)
-                await channel.send(
-                    embed=discord.Embed(
-                        title="⚠️  Something Went Wrong",
-                        description=(
-                            "An unexpected error stopped the game.\n\n"
-                            "Use `/lobby` to start a fresh case — your stats won't be affected."
-                        ),
-                        color=discord.Color.red(),
-                    )
-                )
-            final_outcome = "abandoned"
         except Exception as e:
             logger.exception("Game loop error: %s", e)
             await channel.send(

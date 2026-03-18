@@ -7,7 +7,7 @@ stored in Redis beyond ISO strings).
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 import uuid
 
@@ -82,7 +82,7 @@ class GameState:
             votes              = {},
             confirmed_votes    = [],
             winners            = [],
-            created_at         = datetime.utcnow().isoformat(),
+            created_at         = datetime.now(timezone.utc).isoformat(),
             ref_urls           = {},
         )
 
@@ -144,7 +144,7 @@ class GameState:
             creator_id         = d["creator_id"],
             phase              = d["phase"],
             round              = d["round"],
-            mode               = d["mode"],
+            mode               = d.get("mode", "standard"),
             players            = {
                 int(k): PlayerState.from_dict(v)
                 for k, v in d["players"].items()

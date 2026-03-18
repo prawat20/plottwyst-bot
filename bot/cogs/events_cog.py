@@ -9,6 +9,7 @@ import logging
 import discord
 from discord.ext import commands
 
+import config
 from db.session import AsyncSessionLocal
 from db.repositories import guild_event_repo, server_repo
 
@@ -71,9 +72,11 @@ class EventsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
-        if member.guild.id != 1469920658828820636:
+        if config.COMMUNITY_GUILD_ID is None or member.guild.id != config.COMMUNITY_GUILD_ID:
             return
-        channel = member.guild.get_channel(1483161096608284865)
+        if config.COMMUNITY_WELCOME_CHANNEL_ID is None:
+            return
+        channel = member.guild.get_channel(config.COMMUNITY_WELCOME_CHANNEL_ID)
         if channel is None:
             return
         try:

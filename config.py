@@ -21,8 +21,10 @@ DATABASE_URL: str = os.getenv(
 REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
 
 # ─── Game Timers (seconds) ─────────────────────────────────────────────────────
-DISCUSSION_TIME_R1: int = int(os.getenv("DISCUSSION_TIME_R1", "180"))  # Round 1: 3 min
-DISCUSSION_TIME_R2: int = int(os.getenv("DISCUSSION_TIME_R2", "120"))  # Rounds 2-4: 2 min
+# DISCUSSION_TIME sets both rounds; R1/R2 override individually if needed.
+_discussion_default = os.getenv("DISCUSSION_TIME", "")
+DISCUSSION_TIME_R1: int = int(os.getenv("DISCUSSION_TIME_R1", _discussion_default or "180"))
+DISCUSSION_TIME_R2: int = int(os.getenv("DISCUSSION_TIME_R2", _discussion_default or "120"))
 VOTING_TIME:        int = int(os.getenv("VOTING_TIME",         "30"))
 GUESS_TIME:         int = int(os.getenv("GUESS_TIME",          "45"))
 
@@ -37,6 +39,11 @@ PREMIUM_USER_IDS: set[int] = {
     for uid in os.getenv("PREMIUM_USER_IDS", "").split(",")
     if uid.strip().isdigit()
 }
+
+# ─── Community Server (optional welcome DM on member join) ─────────────────────
+# Set COMMUNITY_GUILD_ID and COMMUNITY_WELCOME_CHANNEL_ID to enable welcome messages.
+COMMUNITY_GUILD_ID:           int | None = int(os.getenv("COMMUNITY_GUILD_ID", "0")) or None
+COMMUNITY_WELCOME_CHANNEL_ID: int | None = int(os.getenv("COMMUNITY_WELCOME_CHANNEL_ID", "0")) or None
 
 # ─── Game Limits ───────────────────────────────────────────────────────────────
 GAME_STATE_TTL:  int = 7200   # Redis TTL for a game session (2 hours)
