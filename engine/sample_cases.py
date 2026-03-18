@@ -35,7 +35,7 @@ SAMPLE_CASES: list[dict] = [
                 "in the city of Exeter and was preparing to go to the constable on Friday."
             ),
         },
-        "twist": (
+        "plottwyst": (
             "The victim had been receiving small doses of poison for three weeks prior — "
             "the fatal dose tonight was merely the last in a carefully measured series."
         ),
@@ -186,7 +186,7 @@ SAMPLE_CASES: list[dict] = [
                 "and was planning to disappear to Havana with the funds within the week."
             ),
         },
-        "twist": (
+        "plottwyst": (
             "The victim's private booth had been wiretapped — someone in the club had been "
             "feeding information to a rival syndicate for months, and Malone had just found out who."
         ),

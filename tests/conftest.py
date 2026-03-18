@@ -35,7 +35,7 @@ def make_state(
         ],
         "victim": {"name": "Lord Grey", "gender": "male", "background": "wealthy lord", "secrets": "many"},
         "setting": {"genre": "classic", "era": "1920s", "venue": "manor", "atmosphere": "tense"},
-        "twist": "None",
+        "plottwyst": "The murderer planted the red herring's personal item near the scene.",
         "solution": "Victor did it.",
         "clues": {
             "opening": [
@@ -126,7 +126,7 @@ def make_valid_case() -> dict:
     return {
         "setting": {"genre": "classic", "era": "1920s", "venue": "manor", "atmosphere": "tense"},
         "victim": {"name": "Lord Grey", "gender": "male", "background": "wealthy lord", "secrets": "many"},
-        "twist": "The victim faked his death once before.",
+        "plottwyst": "Victor Crane planted Lady Ash's glove near the body to frame her, exploiting her known argument with the victim.",
         "murderer": "Victor Crane",
         "red_herring": "Lady Ash",
         "suspects": suspects,

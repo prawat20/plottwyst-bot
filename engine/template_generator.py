@@ -538,7 +538,7 @@ def generate_template_case(genre_key: str | None = None) -> dict:
             "background": f"A prominent figure at {venue}, known for sharp instincts and a habit of keeping records others would prefer to see destroyed.",
             "secrets":    f"Had recently uncovered information about {murderer['name']} that posed an existential threat.",
         },
-        "twist":       twist,
+        "plottwyst":   twist,
         "murderer":    murderer["name"],
         "red_herring": red_herring["name"],
         "suspects":    suspects_out,

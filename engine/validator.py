@@ -11,7 +11,7 @@ def validate_case(case: dict) -> dict:
     Returns the normalised case dict on success.
     Raises ValueError on failure (caller should retry generation).
     """
-    _require_keys(case, ["setting", "victim", "twist", "murderer", "red_herring", "suspects", "clues", "solution"])
+    _require_keys(case, ["setting", "victim", "plottwyst", "murderer", "red_herring", "suspects", "clues", "solution"])
     _require_keys(case["setting"], ["genre", "era", "venue", "atmosphere"])
     _require_keys(case["victim"], ["name", "gender", "background", "secrets"])
 

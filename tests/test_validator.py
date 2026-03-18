@@ -33,7 +33,7 @@ class TestValidCase:
 
 class TestTopLevelKeys:
     @pytest.mark.parametrize("missing_key", [
-        "setting", "victim", "twist", "murderer", "red_herring",
+        "setting", "victim", "plottwyst", "murderer", "red_herring",
         "suspects", "clues", "solution",
     ])
     def test_missing_top_level_key_raises(self, missing_key):

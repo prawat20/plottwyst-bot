@@ -246,24 +246,21 @@ async def run_resolution(
     embed_b.add_field(name="Trait",     value=trait_text,     inline=True)
     embed_b.add_field(name="Last Seen", value=last_seen_text, inline=True)
 
-    twist = state.case.get("twist", "")
-    if twist:
-        embed_b.add_field(
-            name="⚡  Case Complication",
-            value=_cap(f"*{twist}*", 512),
-            inline=False,
-        )
-
-    red_herring = state.case.get("red_herring", "")
-    if red_herring:
-        rh_text = (
-            f"**{red_herring}** was cast into suspicion by design — motive, opportunity, "
-            f"and seemingly damning evidence all aligned against them. "
-            f"The real killer was never where the evidence pointed."
-        )
+    plottwyst_text = state.case.get("plottwyst", "")
+    red_herring    = state.case.get("red_herring", "")
+    if plottwyst_text or red_herring:
+        if plottwyst_text:
+            rh_text = plottwyst_text
+        else:
+            # Fallback for cases generated before the plottwyst field was introduced
+            rh_text = (
+                f"**{red_herring}** was cast into suspicion by design — motive, opportunity, "
+                f"and seemingly damning evidence all aligned against them. "
+                f"The real killer was never where the evidence pointed."
+            )
         embed_b.add_field(
             name="🎭  The Plottwyst",
-            value=_cap(rh_text, 400),
+            value=_cap(rh_text, 512),
             inline=False,
         )
 
