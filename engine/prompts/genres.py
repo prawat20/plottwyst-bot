@@ -30,7 +30,6 @@ GENRES: list[dict] = [
             "a lethal dose of laudanum added to evening tea",
         ],
         "clue_flavour":       "telegrams, wax-sealed letters, gas lamps, servants' gossip, medical journals",
-        "relationship_terms": ["lord", "lady", "butler", "governess", "solicitor", "physician"],
     },
     {
         "key":     "noir_1920s",
@@ -50,7 +49,6 @@ GENRES: list[dict] = [
             "a 'fall' from the hotel's top-floor balcony",
         ],
         "clue_flavour":       "matchbooks, cigarette stubs, telegrams, cash ledgers, jazz records, black-market receipts",
-        "relationship_terms": ["detective", "dame", "bootlegger", "journalist", "senator", "mob boss"],
     },
     {
         "key":     "corporate",
@@ -70,7 +68,6 @@ GENRES: list[dict] = [
             "brake fluid drained from a company vehicle",
         ],
         "clue_flavour":       "Slack messages, CCTV logs, access card records, financial statements, deleted emails, server logs",
-        "relationship_terms": ["CEO", "CFO", "senior partner", "board member", "whistleblower", "private equity investor"],
     },
     {
         "key":     "medieval",
@@ -90,7 +87,6 @@ GENRES: list[dict] = [
             "a staged drowning in the castle's ornamental pond",
         ],
         "clue_flavour":       "wax seals, monks' journals, heraldic markings, blacksmith records, overheard confessions, blood on stone",
-        "relationship_terms": ["knight", "noble", "abbot", "merchant", "herald", "court physician"],
     },
     {
         "key":     "tropical",
@@ -110,7 +106,6 @@ GENRES: list[dict] = [
             "a sedative-laced cocktail followed by drowning",
         ],
         "clue_flavour":       "dive logs, satellite phone records, guest manifests, tide charts, resort CCTV, sunscreen-smeared fingerprints",
-        "relationship_terms": ["resort owner", "marine biologist", "tech mogul", "celebrity", "security chief", "private chef"],
     },
 ]
 
