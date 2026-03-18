@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 import uuid
+import config as _config
 
 
 @dataclass
@@ -62,6 +63,12 @@ class GameState:
     created_at:          str            # ISO datetime string
     ref_urls:            dict[str, str] # jump_url shortcuts: "scene", "suspects", "clues"
     murderer_eliminated_round: int | None  # round the murderer was silently eliminated (None if not)
+    # ── Per-game custom settings (set in lobby, override config defaults) ────
+    discussion_time_r1: int   # seconds for round 1 discussion
+    discussion_time_r2: int   # seconds for round 2+ discussion
+    voting_time:        int   # seconds for each voting phase
+    guess_time:         int   # seconds for final guess phase
+    voting_mode:        str   # "classic" | "silent"
 
     # ── Convenience helpers ──────────────────────────────────────────────────
 
@@ -86,6 +93,11 @@ class GameState:
             created_at                = datetime.now(timezone.utc).isoformat(),
             ref_urls                  = {},
             murderer_eliminated_round = None,
+            discussion_time_r1        = _config.DISCUSSION_TIME_R1,
+            discussion_time_r2        = _config.DISCUSSION_TIME_R2,
+            voting_time               = _config.VOTING_TIME,
+            guess_time                = _config.GUESS_TIME,
+            voting_mode               = "silent" if _config.SILENT_ELIMINATION else "classic",
         )
 
     @property
@@ -136,6 +148,11 @@ class GameState:
             "created_at":                self.created_at,
             "ref_urls":                  self.ref_urls,
             "murderer_eliminated_round": self.murderer_eliminated_round,
+            "discussion_time_r1":        self.discussion_time_r1,
+            "discussion_time_r2":        self.discussion_time_r2,
+            "voting_time":               self.voting_time,
+            "guess_time":                self.guess_time,
+            "voting_mode":               self.voting_mode,
         }
 
     @classmethod
@@ -161,5 +178,10 @@ class GameState:
             winners                   = d["winners"],
             created_at                = d["created_at"],
             ref_urls                  = d.get("ref_urls", {}),
-            murderer_eliminated_round = d.get("murderer_eliminated_round"),  # backwards compat
+            murderer_eliminated_round = d.get("murderer_eliminated_round"),
+            discussion_time_r1        = d.get("discussion_time_r1", _config.DISCUSSION_TIME_R1),
+            discussion_time_r2        = d.get("discussion_time_r2", _config.DISCUSSION_TIME_R2),
+            voting_time               = d.get("voting_time",        _config.VOTING_TIME),
+            guess_time                = d.get("guess_time",         _config.GUESS_TIME),
+            voting_mode               = d.get("voting_mode", "silent" if _config.SILENT_ELIMINATION else "classic"),
         )

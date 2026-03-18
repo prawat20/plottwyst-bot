@@ -25,7 +25,7 @@ async def run_final_guess(channel: discord.TextChannel, state: GameState) -> Non
     state.phase = "GUESS"
     await session_manager.save(state)
 
-    duration        = config.GUESS_TIME
+    duration        = state.guess_time
     remaining_count = len(state.remaining_suspects)
 
     def build_embed(elapsed=0, total=duration, remaining=duration):
@@ -104,7 +104,7 @@ async def run_resolution(
     winners       = [state.players[uid] for uid in state.winners if uid in state.players]
 
     silent_elimination = (
-        config.SILENT_ELIMINATION
+        state.voting_mode == "silent"
         and state.murderer_eliminated_round is not None
     )
 

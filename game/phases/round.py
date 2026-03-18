@@ -116,7 +116,7 @@ async def run_discussion(
     state: GameState,
     round_num: int,
 ) -> None:
-    duration = config.DISCUSSION_TIME_R1 if round_num == 1 else config.DISCUSSION_TIME_R2
+    duration = state.discussion_time_r1 if round_num == 1 else state.discussion_time_r2
     prompt   = _DISCUSSION_PROMPTS[min(round_num - 1, len(_DISCUSSION_PROMPTS) - 1)]
 
     # ── Ready gate (Round 1 only) ─────────────────────────────────────────────
@@ -241,7 +241,7 @@ async def run_voting(
     state.phase           = "VOTING"
     await session_manager.save(state)
 
-    duration = config.VOTING_TIME
+    duration = state.voting_time
 
     # Build the static suspect board for this round (cleared suspects already removed)
     all_suspects = [s["name"] for s in state.case["suspects"]] if state.case else state.remaining_suspects
@@ -264,7 +264,7 @@ async def run_voting(
             desc_parts.append(f"🔗 **Quick Reference:** {ref}\n")
         warning = (
             "Eliminated suspects cannot be named in the final guess — choose carefully.\n"
-            if config.SILENT_ELIMINATION else
+            if state.voting_mode == "silent" else
             "⚠️ Clear the actual murderer and nobody wins this round.\n"
         )
         desc_parts.append(
@@ -353,7 +353,7 @@ async def run_voting(
         return "no_majority"
 
     if eliminated == state.murderer:
-        if config.SILENT_ELIMINATION:
+        if state.voting_mode == "silent":
             # Silent path — treat exactly like an innocent elimination.
             # Don't reveal guilt; the resolution phase will expose this later.
             state.remaining_suspects.remove(eliminated)

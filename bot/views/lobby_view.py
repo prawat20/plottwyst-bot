@@ -11,6 +11,16 @@ from tiers.manager import TierManager
 from tiers.entitlements import Feature
 
 
+def _settings_summary(state: GameState) -> str:
+    r1    = getattr(state, "discussion_time_r1", 180)
+    speed = "🐢 Slow" if r1 >= 240 else ("⚡ Fast" if r1 <= 90 else "⚖️ Normal")
+    vote  = getattr(state, "voting_time", 30)
+    guess = getattr(state, "guess_time", 45)
+    mode  = getattr(state, "voting_mode", "classic")
+    mode_label = "🗡️ Classic" if mode == "classic" else "🔍 Silent Investigation"
+    return f"Speed: **{speed}**  ·  Vote: **{vote}s**  ·  Guess: **{guess}s**  ·  Mode: **{mode_label}**"
+
+
 def build_lobby_embed(
     state: GameState,
     max_players: int,
@@ -45,9 +55,14 @@ def build_lobby_embed(
         value="New to Plottwyst? Use `/howtoplay`",
         inline=True,
     )
+    embed.add_field(
+        name="⚙️  Game Settings",
+        value=_settings_summary(state),
+        inline=False,
+    )
     slots_left  = max_players - player_count
     slots_text  = f"{slots_left} slot{'s' if slots_left != 1 else ''} remaining" if slots_left > 0 else "Lobby full"
-    embed.set_footer(text=f"{slots_text}  ·  Lobby expires in 5 minutes")
+    embed.set_footer(text=f"{slots_text}  ·  Lobby expires in 5 minutes  ·  Host: ⚙️ Settings to customise")
     return embed
 
 
@@ -133,6 +148,18 @@ class LobbyView(discord.ui.View):
         self.selected_genre_key = "random"
 
         self.add_item(GenreSelect(is_premium=is_premium))
+
+    @discord.ui.button(label="Settings", style=discord.ButtonStyle.secondary, emoji="⚙️", row=2)
+    async def settings(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.state.creator_id:
+            await interaction.response.send_message(
+                "Only the host can change game settings.", ephemeral=True
+            )
+            return
+        from bot.views.settings_view import SettingsView, _build_settings_embed
+        await interaction.response.send_message(
+            embed=_build_settings_embed(), view=SettingsView(lobby_view=self), ephemeral=True
+        )
 
     @discord.ui.button(label="Join Game", style=discord.ButtonStyle.success, emoji="🕵️", row=2)
     async def join(self, interaction: discord.Interaction, button: discord.ui.Button):

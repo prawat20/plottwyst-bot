@@ -144,7 +144,7 @@ class GameCog(commands.Cog):
                 outcome = await round_phase.run_voting(channel, state, round_num)
                 await asyncio.sleep(1)
 
-                if outcome == "murderer_eliminated" and not config.SILENT_ELIMINATION:
+                if outcome == "murderer_eliminated" and state.voting_mode != "silent":
                     game_over = True
                     break
 
