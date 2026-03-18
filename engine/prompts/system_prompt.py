@@ -16,7 +16,7 @@ Design goals (Mastermind difficulty — always):
 """
 
 
-def build_prompt(genre_ctx: dict) -> str:
+def build_prompt(genre_ctx: dict, arc: str = "A") -> str:
     return f"""You are a master murder mystery writer. Generate a complete, original murder mystery case as a single JSON object. Every game must feel unique and surprising.
 
 SETTING CONTEXT:
@@ -91,9 +91,9 @@ RULES — follow all of these without exception:
    - Round 1: Forensic detail deepening red herring suspicion.
    - Round 2: Documentary peak — appears to seal red herring's guilt. Misdirection maximum.
 
-9. CLUE ARC VARIANTS — choose exactly ONE:
+9. CLUE ARC — you MUST use VARIANT {arc} exactly as specified below:
 
-   VARIANT A — PURE SYNTHESIS (default):
+   VARIANT A — PURE SYNTHESIS:
    - Opening clue 3: An AMBIGUITY CLUE — nominally implicates the red herring but contains one specific embedded detail (a required skill, access credential, timing constraint, or specialist knowledge) that only the murderer possesses. Players read it as a third strike against the red herring at the opening; in the solution, it recontextualises as the first real evidence of the murderer.
    - Round 3: An ELIMINATION CONSTRAINT that rules out most suspects INCLUDING the red herring specifically. Must narrow the field to 2–3 suspects — not just 1, not "most". No suspect is named. This is the pivot: the player's prime suspect is eliminated.
    - Round 4: A SECOND ELIMINATION CONSTRAINT of a different type. Combined with round 3, exactly one suspect satisfies both. No suspect is named.

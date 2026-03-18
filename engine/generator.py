@@ -8,6 +8,7 @@ Raises RuntimeError if all retries are exhausted.
 import asyncio
 import json
 import logging
+import random
 from google import genai
 from google.genai import types
 
@@ -59,7 +60,9 @@ async def generate_case(genre_override: dict | None = None) -> dict:
         return generate_template_case()
 
     genre_ctx = genre_override or pick_random_genre()
-    prompt    = build_prompt(genre_ctx)
+    arc       = random.choice(["A", "B"])
+    logger.info("Generating case — genre: %s  arc: Variant %s", genre_ctx.get("genre", "?"), arc)
+    prompt    = build_prompt(genre_ctx, arc=arc)
 
     last_error: Exception | None = None
     rpm_retries_left      = RPM_MAX_RETRIES
