@@ -38,11 +38,13 @@ _LAST = [
 
 def _name(gender: str, exclude: list[str]) -> str:
     pool = _FIRST_M if gender == "M" else _FIRST_F
+    used_lasts = {n.rsplit(" ", 1)[-1] for n in exclude if " " in n}
+    avail_lasts = [l for l in _LAST if l not in used_lasts] or _LAST
     for _ in range(50):
-        full = f"{random.choice(pool)} {random.choice(_LAST)}"
+        full = f"{random.choice(pool)} {random.choice(avail_lasts)}"
         if full not in exclude:
             return full
-    return f"{random.choice(pool)} {random.choice(_LAST)}"
+    return f"{random.choice(pool)} {random.choice(avail_lasts)}"
 
 
 # ── Genre definitions ─────────────────────────────────────────────────────────
@@ -142,7 +144,12 @@ GENRES: dict[str, dict] = {
         "alibi_templates": {
             "murderer":    ["I attended to {victim_name} as is my custom and left before {time_of_death}. Whatever occurred after my departure is entirely beyond my knowledge.", "I was in the {alibi_location} the entire evening. Several members of the household can confirm it, if you care to ask them."],
             "red_herring": ["I had private business with {victim_name} earlier in the evening, yes — but we parted on civil terms and I retired to the {alibi_location} long before anything untoward occurred.", "I was near the {murder_location} at one point, I will not deny it — but I heard nothing and saw nothing of consequence."],
-            "innocent":    ["I was in the {alibi_location} the whole of the evening. You may verify it with anyone present.", "I had no quarrel with {victim_name} that evening. We spoke briefly at supper and I did not see them again."],
+            "innocent":    [
+                "I was in the {alibi_location} the whole of the evening. You may verify it with anyone present.",
+                "I had no quarrel with {victim_name} that evening. We spoke briefly at supper and I did not see them again.",
+                "I spent the evening with other members of the household in the {alibi_location}. I was not near the {murder_location} at any point.",
+                "My movements that evening are entirely accounted for. I was in the {alibi_location} from dinner onwards and did not leave until after the alarm was raised.",
+            ],
         },
         "solution_templates": [
             "The murderer was {murderer_name} — not {red_herring_name}, who the early evidence framed so carefully. Driven by {motive}, {murderer_name} introduced {residue} via {instrument}. The case breaks when two facts are read together: the twelve-minute gap in which only one person's movements are unverified, and the professional object whose impression was found at the desk — both fitting {murderer_name}'s position and no one else's simultaneously.",
@@ -243,7 +250,12 @@ GENRES: dict[str, dict] = {
         "alibi_templates": {
             "murderer":    ["I was at my station the entire night. Anyone on that floor can tell you — I never went near the booth.", "I had nothing to do with it. I was in the {alibi_location} all evening, minding my own business like always."],
             "red_herring": ["Sure, I was near the {murder_location} — I won't lie about that. But I didn't go in. I heard something, got spooked, and walked the other way.", "I had words with {victim_name} earlier. It wasn't pretty. But I didn't touch them after that."],
-            "innocent":    ["I was behind the {alibi_location} the whole shift. Fifty people can put me there.", "I've got nothing to hide. I was nowhere near that part of the club."],
+            "innocent":    [
+                "I was behind the {alibi_location} the whole shift. Fifty people can put me there.",
+                "I've got nothing to hide. I was nowhere near that part of the club.",
+                "I clocked in at nine and didn't leave my station until the whole place was locked down. You can check with anyone.",
+                "Ask anyone who was working that night. I was in the {alibi_location} the whole time. I don't get involved in that kind of business.",
+            ],
         },
         "solution_templates": [
             "The killer was {murderer_name} — not {red_herring_name}. Two constraints, read together, close the case: first, only one person has an eight-minute gap unaccounted for in any independent record; second, the specialist supply network returns a single account matching one suspect's professional history. {murderer_name} satisfies both. Motive: {motive}. Method: {instrument} carrying {residue}.",
@@ -344,7 +356,12 @@ GENRES: dict[str, dict] = {
         "alibi_templates": {
             "murderer":    ["I left the building at the time my access log shows. Whatever happened after that had nothing to do with me.", "I was in a call until eight, then I packed up and left. I can share my calendar and my Uber receipt."],
             "red_herring": ["I was in {murder_location} earlier that evening, yes — we had words. But I left and went straight to {alibi_location}. Check my badge history.", "I don't deny we had a difficult conversation. But I walked away. That's what you do."],
-            "innocent":    ["I was at {alibi_location} all evening. My access log, my laptop activity, and the security footage will all confirm that.", "I had no reason to be anywhere near that part of the building. You can verify my location."],
+            "innocent":    [
+                "I was at {alibi_location} all evening. My access log, my laptop activity, and the security footage will all confirm that.",
+                "I had no reason to be anywhere near that part of the building. You can verify my location.",
+                "I was working late at my desk all evening. You'll see my laptop was active on the network the entire time.",
+                "I stayed in {alibi_location} for a call that ran until after eleven. I never went near the executive floor.",
+            ],
         },
         "solution_templates": [
             "The killer was {murderer_name} — not {red_herring_name}. Two constraints solve it: only one of three people with high-level system access has an eleven-minute digital blackout during the window; and only one suspect's professional training would encompass handling {residue} as a matter of course. {murderer_name} is the only person who satisfies both. Motive: {motive}.",
@@ -352,6 +369,23 @@ GENRES: dict[str, dict] = {
         ],
     },
 }
+
+
+# ── Plottwyst templates (framing mechanism descriptions) ──────────────────────
+
+_PLOTTWYST_TEMPLATES = [
+    "{murderer_name} deliberately positioned {red_herring_name} near the scene and ensured their presence would be noted — exploiting an existing tension between {red_herring_name} and {victim_name} to divert suspicion from themselves.",
+    "{murderer_name} planted personal items belonging to {red_herring_name} near the body, knowing {red_herring_name}'s known grievance with {victim_name} would make them the obvious suspect.",
+    "By ensuring {red_herring_name} was seen near the {murder_location} that evening, {murderer_name} constructed a frame that investigators were intended to follow — while the true method and motive pointed elsewhere.",
+    "The evidence trail leading to {red_herring_name} was no accident. {murderer_name} exploited a pre-existing conflict to manufacture suspicion, keeping the real motive and method hidden in plain sight.",
+    "{murderer_name} knew that {red_herring_name}'s history with {victim_name} would speak for itself — and made certain that history was the first thing investigators would find.",
+]
+
+_PLOTTWYST_HINTS = [
+    " Investigators note that several of the key pieces pointing to {red_herring_name} are curiously well-positioned — as though arranged for discovery rather than left in the chaos of a genuine crime.",
+    " The pattern of evidence, taken together, is consistent with a calculated attempt to direct scrutiny away from its true source.",
+    " The manner in which this evidence was arranged suggests deliberate placement rather than coincidence — each item positioned where it would be found, and found quickly.",
+]
 
 
 # ── Assembly engine ───────────────────────────────────────────────────────────
@@ -404,11 +438,16 @@ def generate_template_case(genre_key: str | None = None) -> dict:
     shuffled_locs   = random.sample(all_locs, len(all_locs))
 
     suspects_raw = []
+    used_relations: dict[str, list[str]] = {"M": [], "F": []}
     for i in range(6):
         gender   = random.choice(["M", "F"])
         name     = _name(gender, used_names)
         used_names.append(name)
-        relation = random.choice(g["relations"][gender])
+        avail_rels = [r for r in g["relations"][gender] if r not in used_relations[gender]]
+        if not avail_rels:
+            avail_rels = g["relations"][gender]
+        relation = random.choice(avail_rels)
+        used_relations[gender].append(relation)
         motives  = g["motives"].get(relation, ["an undisclosed personal grievance against the victim"])
         motive   = random.choice(motives)
         trait    = shuffled_traits[i]
@@ -447,8 +486,21 @@ def generate_template_case(genre_key: str | None = None) -> dict:
     # ── Build alibi statements ────────────────────────────────────────────────
     alibi_tmpls = g["alibi_templates"]
 
+    # Pre-shuffle innocent alibi pool so each innocent gets a distinct template
+    _innocent_raw = alibi_tmpls["innocent"]
+    if len(_innocent_raw) >= 4:
+        _innocent_pool = random.sample(_innocent_raw, 4)
+    else:
+        extended = _innocent_raw * ((4 // len(_innocent_raw)) + 1)
+        random.shuffle(extended)
+        _innocent_pool = extended[:4]
+    _innocent_iter = iter(_innocent_pool)
+
     def build_alibi(role: str, alibi_loc: str) -> str:
-        tmpl = random.choice(alibi_tmpls[role])
+        if role == "innocent":
+            tmpl = next(_innocent_iter)
+        else:
+            tmpl = random.choice(alibi_tmpls[role])
         return _fill(tmpl, {
             "victim_name":     victim_name,
             "murderer_name":   murderer["name"],
@@ -489,21 +541,23 @@ def generate_template_case(genre_key: str | None = None) -> dict:
 
     # ── Build clues ───────────────────────────────────────────────────────────
     ctx = {
-        "victim_name":       victim_name,
-        "murderer_name":     murderer["name"],
-        "red_herring_name":  red_herring["name"],
-        "murder_location":   murder_location,
-        "murderer_location": murderer_location,
-        "instrument":        method["instrument"],
-        "residue":           method["residue"],
-        "cause":             method["cause"],
-        "motive":            murderer["motive"],
-        "venue":             venue,
-        "time_of_death":     time_of_death,
-        "time_arrived":      time_arrived,
-        "gap":               str(gap),
-        "weeks":             str(weeks),
-        "season":            season,
+        "victim_name":        victim_name,
+        "murderer_name":      murderer["name"],
+        "red_herring_name":   red_herring["name"],
+        "murder_location":    murder_location,
+        "murderer_location":  murderer_location,
+        "murderer_relation":  murderer["relation"],
+        "murderer_occupation": murderer["relation"],
+        "instrument":         method["instrument"],
+        "residue":            method["residue"],
+        "cause":              method["cause"],
+        "motive":             murderer["motive"],
+        "venue":              venue,
+        "time_of_death":      time_of_death,
+        "time_arrived":       time_arrived,
+        "gap":                str(gap),
+        "weeks":              str(weeks),
+        "season":             season,
     }
 
     def build_clue(tmpl_tuple: tuple) -> dict:
@@ -513,10 +567,16 @@ def generate_template_case(genre_key: str | None = None) -> dict:
     opening_clues = [build_clue(t) for t in clue_chain["opening"]]
     round_clues   = {k: build_clue(clue_chain[k]) for k in ["round_1", "round_2", "round_3", "round_4"]}
 
+    # Weave plottwyst hint into round_2 to surface the framing mid-game
+    hint = _fill(random.choice(_PLOTTWYST_HINTS), ctx)
+    round_clues["round_2"]["text"] += hint
+
     # ── Scene & solution ──────────────────────────────────────────────────────
     atm_tmpl     = random.choice(g["atmosphere_templates"])
     victim_role  = suspects_out[0]["relation"] if False else random.choice(g["relations"][victim_gender])
     atmosphere   = _fill(atm_tmpl, {**ctx, "victim_role": victim_role})
+
+    plottwyst = _fill(random.choice(_PLOTTWYST_TEMPLATES), ctx)
 
     sol_tmpls = clue_chain.get("solution_templates", g["solution_templates"])
     sol_tmpl  = random.choice(sol_tmpls)
@@ -538,7 +598,7 @@ def generate_template_case(genre_key: str | None = None) -> dict:
             "background": f"A prominent figure at {venue}, known for sharp instincts and a habit of keeping records others would prefer to see destroyed.",
             "secrets":    f"Had recently uncovered information about {murderer['name']} that posed an existential threat.",
         },
-        "plottwyst":   twist,
+        "plottwyst":   plottwyst,
         "murderer":    murderer["name"],
         "red_herring": red_herring["name"],
         "suspects":    suspects_out,
