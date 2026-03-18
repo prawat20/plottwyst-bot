@@ -52,6 +52,32 @@ class PlottwystBot(commands.Bot):
         await self.tree.sync()
         logger.info("Slash commands synced.")
 
+        # Global app command error handler — catches any unhandled slash command
+        # exception and sends the user an ephemeral message instead of silence.
+        @self.tree.error
+        async def on_app_command_error(
+            interaction: discord.Interaction,
+            error: discord.app_commands.AppCommandError,
+        ) -> None:
+            logger.error(
+                "App command '%s' raised: %s",
+                interaction.command.name if interaction.command else "unknown",
+                error,
+                exc_info=error,
+            )
+            msg = (
+                "⚠️ Something went wrong with that command.\n\n"
+                "If a game is stuck in this channel, use `/forcestop` to clear it. "
+                "Otherwise try again — if it keeps happening, let us know."
+            )
+            try:
+                if interaction.response.is_done():
+                    await interaction.followup.send(msg, ephemeral=True)
+                else:
+                    await interaction.response.send_message(msg, ephemeral=True)
+            except Exception:
+                pass
+
     async def on_ready(self) -> None:
         logger.info("Plottwyst is online as %s (ID: %s)", self.user, self.user.id)
         await self.change_presence(
