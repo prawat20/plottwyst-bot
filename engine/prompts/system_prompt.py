@@ -3,20 +3,143 @@ from __future__ import annotations
 Builds the Gemini prompt for a complete, unique murder mystery case.
 
 Design goals (Mastermind difficulty — always):
-- Opening clues 1 & 2 misdirect toward the red herring. Rounds 1–2 deepen that suspicion.
+- Two opening clues misdirect toward the red herring. Rounds 1–2 deepen that suspicion.
   By the end of round 2 the red herring must be the obvious, dominant suspect.
-- Opening clue 3 is an ambiguity clue — nominally implicates the red herring but contains
-  one embedded detail that only the murderer could satisfy.
-- Rounds 3–4 shift from misdirection to deduction via elimination constraints.
-  Round 3 narrows to 2–3 suspects AND specifically eliminates the red herring.
-  Round 4 narrows to exactly 1.
+- One opening clue is the ARC CLUE — its position (1, 2, or 3) is randomised each game.
+- Rounds 3–4 shift from misdirection to deduction via arc-specific resolution.
 - The plottwyst (framing mechanism) is woven into one mid-game clue, revealed fully at the end.
 - No single clue implicating the murderer is conclusive on its own.
 - The solution should feel like "how did I miss that?" not "of course".
+
+Arc variants:
+  A — PURE SYNTHESIS    : arc clue has a hidden detail only the murderer satisfies
+  B — INNOCENT MENTION  : arc clue appears to clear the murderer (exoneration)
+  C — DOUBLE SUSPECT    : arc clue introduces a second strong suspect alongside the red herring
+  E — FALSE WITNESS     : arc clue is a named witness statement that is lying or mistaken
 """
 
 
-def build_prompt(genre_ctx: dict, arc: str = "A") -> str:
+def build_prompt(genre_ctx: dict, arc: str = "A", arc_position: int = 3) -> str:
+    # ── Pre-compute all dynamic parts ─────────────────────────────────────────
+    non_arc   = sorted(p for p in [1, 2, 3] if p != arc_position)
+    rh1_pos   = non_arc[0]   # lower non-arc position → physical clue
+    rh2_pos   = non_arc[1]   # higher non-arc position → timeline clue
+
+    arc_name = {
+        "A": "PURE SYNTHESIS",
+        "B": "INNOCENT MENTION",
+        "C": "DOUBLE SUSPECT",
+        "E": "FALSE WITNESS",
+    }[arc]
+
+    arc_type_hint = {
+        "A": "physical | timeline | testimonial | forensic | documentary",
+        "B": "physical | documentary",
+        "C": "testimonial | physical",
+        "E": "testimonial",
+    }[arc]
+
+    arc_clue_instruction = {
+        "A": (
+            "An AMBIGUITY CLUE — nominally implicates the red herring but contains one specific "
+            "embedded detail (a required skill, access credential, timing constraint, or specialist "
+            "knowledge) that only the murderer possesses. Players read it as a strike against the "
+            "red herring; in the solution it recontextualises as the first real evidence of the murderer."
+        ),
+        "B": (
+            "An EXONERATION CLUE based on physical evidence or a verifiable record (not merely a "
+            "witness statement) that appears to place the murderer elsewhere or prove they could not "
+            "have acted. Makes the murderer the least likely suspect when this clue is first read."
+        ),
+        "C": (
+            "An EMERGENCE CLUE that introduces a SECOND strong suspect entirely distinct from the "
+            "red herring — a piece of evidence, a record, or a physical object that ties a different "
+            "named suspect to the victim with compelling weight. After this clue players have two "
+            "strong candidates, not one. Both will be eliminated by constraint clues in rounds 3–4."
+        ),
+        "E": (
+            "A WITNESS STATEMENT attributed to one of the named suspects that places the RED HERRING "
+            "at the scene, in possession of the murder weapon, or in a damning exchange with the "
+            "victim. The statement is specific, attributed by name, and reads as a decisive strike "
+            "against the red herring — but the witness is lying or mistaken for reasons revealed in round 3."
+        ),
+    }[arc]
+
+    arc_r3_r4 = {
+        "A": (
+            f"   - Round 3: An ELIMINATION CONSTRAINT that rules out most suspects INCLUDING the "
+            f"red herring specifically. Must narrow the field to 2–3 suspects — not just 1, not "
+            f"\"most\". No suspect is named. This is the pivot: the player's prime suspect is eliminated.\n"
+            f"   - Round 4: A SECOND ELIMINATION CONSTRAINT of a different type. Combined with "
+            f"round 3, exactly one suspect satisfies both. No suspect is named."
+        ),
+        "B": (
+            f"   - Round 3: Dismantles the specific evidence from opening clue {arc_position} "
+            f"(the log is automated, the object was planted, the timing is wrong). Must also "
+            f"introduce one constraint detail the murderer satisfies. No suspect named.\n"
+            f"   - Round 4: A CONSTRAINT CLUE that, combined with the round 3 detail, narrows "
+            f"to exactly one suspect. No suspect named."
+        ),
+        "C": (
+            f"   - Round 3: An ELIMINATION CONSTRAINT that rules out BOTH the red herring AND "
+            f"the second suspect introduced in opening clue {arc_position}, each failing for a "
+            f"different specific reason (one lacks the required access, the other fails on timing "
+            f"or method). Must still leave 2–3 suspects in play. No suspect named.\n"
+            f"   - Round 4: A SECOND ELIMINATION CONSTRAINT of a different type. Combined with "
+            f"round 3, exactly one suspect satisfies both. No suspect is named."
+        ),
+        "E": (
+            f"   - Round 3: Dismantles the witness statement from opening clue {arc_position} — "
+            f"reveals it contains a provable impossibility (a timing conflict with a verifiable "
+            f"record, a physical constraint the witness couldn't have observed, or a named document "
+            f"directly contradicting their account). Also introduces one elimination constraint. "
+            f"No suspect named.\n"
+            f"   - Round 4: A CONSTRAINT CLUE that, combined with the round 3 detail, narrows "
+            f"to exactly one suspect. No suspect named."
+        ),
+    }[arc]
+
+    solution_arc_note = {
+        "A": (
+            f"recontextualise opening clue {arc_position} — explain what the embedded ambiguity "
+            f"detail was really pointing at and why players almost certainly misread it"
+        ),
+        "B": (
+            f"recontextualise opening clue {arc_position} — show how the exoneration evidence "
+            f"was false and what specific detail in round 3 exposed it"
+        ),
+        "C": (
+            f"recontextualise opening clue {arc_position} — explain why the second suspect was "
+            f"a false lead and how the two separate constraints eliminated both them and the red herring"
+        ),
+        "E": (
+            f"recontextualise opening clue {arc_position} — reveal that the witness was lying or "
+            f"mistaken, expose their real motive for the false statement, and show what the "
+            f"round 3 impossibility actually proved"
+        ),
+    }[arc]
+
+    # ── Opening clue JSON schema entries ──────────────────────────────────────
+    # rh1_pos and rh2_pos get standard red-herring clues (physical, timeline).
+    # arc_position gets the arc-specific clue.
+    _rh_physical = (
+        '{"type": "physical",  "text": "string — a specific physical object or forensic trace at a '
+        'named location that strongly implicates the RED HERRING. References a real object (not vague). '
+        'Does not mention or implicate the murderer."}'
+    )
+    _rh_timeline = (
+        '{"type": "timeline",  "text": "string — a specific time, movement, or access record placing '
+        'the RED HERRING at or near the scene. The murderer\'s movements are not mentioned."}'
+    )
+    _arc_clue = (
+        f'{{"type": "{arc_type_hint}", "text": "string — opening clue {arc_position} (ARC CLUE): '
+        f'{arc_clue_instruction}"}}'
+    )
+
+    slots = {rh1_pos: _rh_physical, rh2_pos: _rh_timeline, arc_position: _arc_clue}
+    opening_block = "\n      ".join(slots[p] for p in [1, 2, 3])
+
+    # ── Build and return the full prompt ──────────────────────────────────────
     return f"""You are a master murder mystery writer. Generate a complete, original murder mystery case as a single JSON object. Every game must feel unique and surprising.
 
 SETTING CONTEXT:
@@ -58,16 +181,14 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no commentary:
   ],
   "clues": {{
     "opening": [
-      {{"type": "physical",    "text": "string — a specific physical object or forensic trace at a named location that strongly implicates the RED HERRING. References a real object (not vague). Does not mention or implicate the murderer."}},
-      {{"type": "timeline",    "text": "string — a specific time, movement, or access record placing the RED HERRING at or near the scene. The murderer's movements are not mentioned."}},
-      {{"type": "testimonial", "text": "string — see CLUE ARC VARIANTS in Rule 9. This is the critical ambiguity clue."}}
+      {opening_block}
     ],
     "round_1": {{"type": "forensic",    "text": "string — specific forensic detail (trace, method, biological evidence) deepening suspicion toward the RED HERRING. No evidence implicating the murderer."}},
     "round_2": {{"type": "documentary", "text": "string — a specific document (named letter, dated log, signed record) appearing to seal the RED HERRING's guilt. Players should be most certain here."}},
-    "round_3": {{"type": "string — choose: physical | timeline | testimonial | forensic | documentary", "text": "string — see CLUE ARC VARIANTS in Rule 9."}},
-    "round_4": {{"type": "string — choose: physical | timeline | testimonial | forensic | documentary", "text": "string — see CLUE ARC VARIANTS in Rule 9."}}
+    "round_3": {{"type": "string — choose: physical | timeline | testimonial | forensic | documentary", "text": "string — see CLUE ARC in Rule 9."}},
+    "round_4": {{"type": "string — choose: physical | timeline | testimonial | forensic | documentary", "text": "string — see CLUE ARC in Rule 9."}}
   }},
-  "solution": "string — 4–5 sentence dramatic detective reveal. Must: (1) name the murderer and state their motive, (2) explain the murder method and its connection to their occupation, (3) show how the constraint clues eliminate everyone else, (4) recontextualise opening clue 3 — explain what that detail was really pointing at, (5) explain how the plottwyst (framing of the red herring) was constructed. Written as a compelling in-world narrative, not a technical checklist. Never use phrases like 'round 3 showed' or 'the constraint clue'."
+  "solution": "string — 4–5 sentence dramatic detective reveal. Must: (1) name the murderer and state their motive, (2) explain the murder method and its connection to their occupation, (3) show how the constraint clues eliminate everyone else, (4) {solution_arc_note}, (5) explain how the plottwyst (framing of the red herring) was constructed. Written as a compelling in-world narrative, not a technical checklist. Never use phrases like 'round 3 showed' or 'the constraint clue'."
 }}
 
 RULES — follow all of these without exception:
@@ -86,22 +207,16 @@ RULES — follow all of these without exception:
 
 7. All 6 suspect names must be unique — no two suspects share a first or last name.
 
-8. OPENING AND EARLY ROUNDS — mandatory for both arc variants:
-   - Opening clues 1 & 2: Both strongly implicate the RED HERRING. The murderer is not mentioned.
+8. OPENING AND EARLY ROUNDS:
+   - Opening clue {rh1_pos} and opening clue {rh2_pos}: Both strongly implicate the RED HERRING. The murderer is not mentioned.
+   - Opening clue {arc_position}: the ARC CLUE — see Rule 9 exactly.
    - Round 1: Forensic detail deepening red herring suspicion.
    - Round 2: Documentary peak — appears to seal red herring's guilt. Misdirection maximum.
 
-9. CLUE ARC — you MUST use VARIANT {arc} exactly as specified below:
+9. CLUE ARC — you MUST use VARIANT {arc} ({arc_name}) exactly as specified:
 
-   VARIANT A — PURE SYNTHESIS:
-   - Opening clue 3: An AMBIGUITY CLUE — nominally implicates the red herring but contains one specific embedded detail (a required skill, access credential, timing constraint, or specialist knowledge) that only the murderer possesses. Players read it as a third strike against the red herring at the opening; in the solution, it recontextualises as the first real evidence of the murderer.
-   - Round 3: An ELIMINATION CONSTRAINT that rules out most suspects INCLUDING the red herring specifically. Must narrow the field to 2–3 suspects — not just 1, not "most". No suspect is named. This is the pivot: the player's prime suspect is eliminated.
-   - Round 4: A SECOND ELIMINATION CONSTRAINT of a different type. Combined with round 3, exactly one suspect satisfies both. No suspect is named.
-
-   VARIANT B — INNOCENT MENTION:
-   - Opening clue 3: An EXONERATION CLUE based on physical evidence or a record (not merely a witness) that appears to place the murderer elsewhere or prove they could not have acted. Makes the murderer the least likely suspect at the opening.
-   - Round 3: Dismantles the specific evidence from clue 3 (the log is automated, the object was planted, the timing is wrong). Must also introduce one constraint detail the murderer satisfies. No suspect named.
-   - Round 4: A CONSTRAINT CLUE that, combined with the round 3 detail, narrows to exactly one suspect. No suspect named.
+   - Opening clue {arc_position}: {arc_clue_instruction}
+{arc_r3_r4}
 
 10. CONSTRAINT CLUE DESIGN — elimination, not identification:
     Constraints must rule suspects OUT, not point directly at one person.
@@ -135,7 +250,7 @@ RULES — follow all of these without exception:
 
 17. ANTI-ARCHETYPE — vary which type of suspect is the murderer. Do not default to the most sinister-sounding occupation (chemist, retired colonel, solicitor). The murderer may be the journalist, the maid, the socialite, the accountant — whoever serves the story. Experienced players should not be able to predict the murderer from their occupation alone.
 
-18. NO SINGLE-CLUE DEDUCTION — no clue that implicates the murderer should be conclusive on its own. Every piece of evidence pointing toward the murderer must require combination with at least one other clue to become conclusive.
+18. NO SINGLE-CLUE DEDUCTION — no clue that implicating the murderer should be conclusive on its own. Every piece of evidence pointing toward the murderer must require combination with at least one other clue to become conclusive.
 
 19. Round 3 and round 4 clues must NEVER name any suspect. Facts about the crime, the method, or the evidence only.
 

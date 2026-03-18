@@ -59,10 +59,14 @@ async def generate_case(genre_override: dict | None = None) -> dict:
         logger.info("TEST_MODE enabled — generating template case (no Gemini call)")
         return generate_template_case()
 
-    genre_ctx = genre_override or pick_random_genre()
-    arc       = random.choice(["A", "B"])
-    logger.info("Generating case — genre: %s  arc: Variant %s", genre_ctx.get("genre", "?"), arc)
-    prompt    = build_prompt(genre_ctx, arc=arc)
+    genre_ctx    = genre_override or pick_random_genre()
+    arc          = random.choice(["A", "B", "C", "E"])
+    arc_position = random.choice([1, 2, 3])
+    logger.info(
+        "Generating case — genre: %s  arc: Variant %s  arc_position: clue %d",
+        genre_ctx.get("genre", "?"), arc, arc_position,
+    )
+    prompt = build_prompt(genre_ctx, arc=arc, arc_position=arc_position)
 
     last_error: Exception | None = None
     rpm_retries_left      = RPM_MAX_RETRIES
