@@ -8,6 +8,9 @@ import discord
 
 import config
 from game.state import GameState
+
+# Round ordinals for readable reveal messages
+_ORDINAL = {1: "Round 1", 2: "Round 2", 3: "Round 3", 4: "Round 4"}
 from game import session_manager
 from game.phases.round import _progress_bar
 from game.phases.reveal import CLUE_TYPE_EMOJI
@@ -100,8 +103,13 @@ async def run_resolution(
     murderer_name = state.murderer
     winners       = [state.players[uid] for uid in state.winners if uid in state.players]
 
+    silent_elimination = (
+        config.SILENT_ELIMINATION
+        and state.murderer_eliminated_round is not None
+    )
+
     if murderer_eliminated:
-        # ── Early defeat: the Plottwyst claimed the case ──────────────────────
+        # ── Classic mode: early defeat, Plottwyst claimed the case ───────────
         # No scorecard — nobody ever got a chance to guess.
         defeat_embed = discord.Embed(
             title="🎭  THE PLOTTWYST CLAIMED ANOTHER CASE",
@@ -110,6 +118,23 @@ async def run_resolution(
                 f"the killer escaped before the investigation could run its course.\n\n"
                 "No detective had the chance to name the killer. "
                 "The misdirection held from the very first clue.\n\n"
+                "*The full truth is about to be revealed.*"
+            ),
+            color=discord.Color.dark_red(),
+        )
+        await channel.send(embed=defeat_embed)
+        outcome = "murderer_eliminated"
+
+    elif silent_elimination:
+        # ── Silent elimination mode: murderer was cleared during voting ───────
+        # No scorecard — murderer wasn't in the final guess list.
+        elim_round = _ORDINAL.get(state.murderer_eliminated_round, f"Round {state.murderer_eliminated_round}")
+        defeat_embed = discord.Embed(
+            title="🎭  THE KILLER WALKED FREE",
+            description=(
+                f"The investigation ran its full course — but the murderer was never on the final list.\n\n"
+                f"Your team cleared **{murderer_name}** from suspicion in **{elim_round}**. "
+                f"They walked free while the investigation focused elsewhere.\n\n"
                 "*The full truth is about to be revealed.*"
             ),
             color=discord.Color.dark_red(),

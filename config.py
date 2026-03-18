@@ -32,6 +32,14 @@ GUESS_TIME:         int = int(os.getenv("GUESS_TIME",          "45"))
 # Set TEST_MODE=true to skip Gemini and use pre-written sample cases instead.
 TEST_MODE: bool = os.getenv("TEST_MODE", "false").lower() == "true"
 
+# ─── Game Mechanics ────────────────────────────────────────────────────────────
+# SILENT_ELIMINATION=true  → voting never reveals whether the murderer was cleared;
+#                             game always runs all 4 rounds + final guess.
+#                             Resolution reveals if the murderer was silently eliminated.
+# SILENT_ELIMINATION=false → current behaviour: voting out the murderer ends the game
+#                             immediately with a full reveal.
+SILENT_ELIMINATION: bool = os.getenv("SILENT_ELIMINATION", "false").lower() == "true"
+
 # Comma-separated Discord user IDs that are always treated as premium.
 # Used for dev/testing. E.g. PREMIUM_USER_IDS=123456789,987654321
 PREMIUM_USER_IDS: set[int] = {

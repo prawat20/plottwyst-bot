@@ -61,6 +61,7 @@ class GameState:
     winners:             list[int]      # user_ids who guessed correctly
     created_at:          str            # ISO datetime string
     ref_urls:            dict[str, str] # jump_url shortcuts: "scene", "suspects", "clues"
+    murderer_eliminated_round: int | None  # round the murderer was silently eliminated (None if not)
 
     # ── Convenience helpers ──────────────────────────────────────────────────
 
@@ -79,11 +80,12 @@ class GameState:
             remaining_suspects = [],
             revealed_clues     = [],
             clue_pool          = [],
-            votes              = {},
-            confirmed_votes    = [],
-            winners            = [],
-            created_at         = datetime.now(timezone.utc).isoformat(),
-            ref_urls           = {},
+            votes                     = {},
+            confirmed_votes           = [],
+            winners                   = [],
+            created_at                = datetime.now(timezone.utc).isoformat(),
+            ref_urls                  = {},
+            murderer_eliminated_round = None,
         )
 
     @property
@@ -130,9 +132,10 @@ class GameState:
             "clue_pool":          self.clue_pool,
             "votes":              {str(k): v for k, v in self.votes.items()},
             "confirmed_votes":    self.confirmed_votes,
-            "winners":            self.winners,
-            "created_at":         self.created_at,
-            "ref_urls":           self.ref_urls,
+            "winners":                   self.winners,
+            "created_at":                self.created_at,
+            "ref_urls":                  self.ref_urls,
+            "murderer_eliminated_round": self.murderer_eliminated_round,
         }
 
     @classmethod
@@ -154,8 +157,9 @@ class GameState:
             revealed_clues     = d["revealed_clues"],
             clue_pool          = d["clue_pool"],
             votes              = {int(k): v for k, v in d["votes"].items()},
-            confirmed_votes    = d["confirmed_votes"],
-            winners            = d["winners"],
-            created_at         = d["created_at"],
-            ref_urls           = d.get("ref_urls", {}),
+            confirmed_votes           = d["confirmed_votes"],
+            winners                   = d["winners"],
+            created_at                = d["created_at"],
+            ref_urls                  = d.get("ref_urls", {}),
+            murderer_eliminated_round = d.get("murderer_eliminated_round"),  # backwards compat
         )

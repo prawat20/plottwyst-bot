@@ -262,10 +262,15 @@ async def run_voting(
         desc_parts = []
         if ref:
             desc_parts.append(f"🔗 **Quick Reference:** {ref}\n")
+        warning = (
+            "Eliminated suspects cannot be named in the final guess — choose carefully.\n"
+            if config.SILENT_ELIMINATION else
+            "⚠️ Clear the actual murderer and nobody wins this round.\n"
+        )
         desc_parts.append(
             "**Click a suspect you're confident is NOT the murderer.**\n"
             "The most-voted suspect is cleared from suspicion.\n"
-            "⚠️ Clear the actual murderer and nobody wins this round.\n\n"
+            f"{warning}\n"
             f"`{bar}` **{remaining}s remaining**"
         )
         embed = discord.Embed(
@@ -348,19 +353,39 @@ async def run_voting(
         return "no_majority"
 
     if eliminated == state.murderer:
-        result_embed = discord.Embed(
-            title="💀  THE MURDERER WAS CLEARED — Round Forfeit",
-            description=(
-                f"The detectives cleared **{eliminated}**... who was the murderer all along.\n\n"
-                "The killer slips through your fingers. Nobody wins this round.\n"
-                "The investigation continues — don't make the same mistake again."
-            ),
-            color=discord.Color.dark_red(),
-        )
-        await channel.send(embed=result_embed)
-        state.remaining_suspects.remove(eliminated)
-        await session_manager.save(state)
-        return "murderer_eliminated"
+        if config.SILENT_ELIMINATION:
+            # Silent path — treat exactly like an innocent elimination.
+            # Don't reveal guilt; the resolution phase will expose this later.
+            state.remaining_suspects.remove(eliminated)
+            state.murderer_eliminated_round = round_num
+            remaining = len(state.remaining_suspects)
+            await session_manager.save(state)
+            result_embed = discord.Embed(
+                title="✅  SUSPECT CLEARED",
+                description=(
+                    f"**{eliminated}** has been cleared from active questioning.\n\n"
+                    f"**{remaining} suspect{'s' if remaining != 1 else ''} remain.** "
+                    f"{'The investigation continues.' if remaining > 1 else 'One suspect remains.'}"
+                ),
+                color=discord.Color.green(),
+            )
+            await channel.send(embed=result_embed)
+            return "innocent_eliminated"
+        else:
+            # Current behaviour — reveal immediately and end the game.
+            result_embed = discord.Embed(
+                title="💀  THE MURDERER WAS CLEARED — Round Forfeit",
+                description=(
+                    f"The detectives cleared **{eliminated}**... who was the murderer all along.\n\n"
+                    "The killer slips through your fingers. Nobody wins this round.\n"
+                    "The investigation continues — don't make the same mistake again."
+                ),
+                color=discord.Color.dark_red(),
+            )
+            await channel.send(embed=result_embed)
+            state.remaining_suspects.remove(eliminated)
+            await session_manager.save(state)
+            return "murderer_eliminated"
 
     state.remaining_suspects.remove(eliminated)
     remaining = len(state.remaining_suspects)
