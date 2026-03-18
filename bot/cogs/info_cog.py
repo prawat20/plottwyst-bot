@@ -7,40 +7,12 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-import config
 from tiers.entitlements import TIERS, Feature
 
 
 # ── How-To-Play pages ────────────────────────────────────────────────────────
-# Pages are built at call time (not module load) so config.SILENT_ELIMINATION
-# is evaluated fresh — flipping the Railway env var takes effect immediately.
 
 def _build_htp_pages() -> list[dict]:
-    if config.SILENT_ELIMINATION:
-        lose_condition = (
-            "**Lose condition:** Fail to name the murderer in the final guess, "
-            "or accidentally vote them out during the investigation — "
-            "they won't appear in the final guess list if cleared mid-game."
-        )
-        critical_rule_name  = "⚠️  Silent Elimination"
-        critical_rule_value = (
-            "Eliminated suspects are **removed from the final guess list**. "
-            "If your team votes out the actual murderer mid-game, they walk free — "
-            "and you won't know until the resolution reveal. "
-            "Vote out suspects you're confident are **innocent**, not ones you merely suspect."
-        )
-    else:
-        lose_condition = (
-            "**Lose condition:** Accidentally vote out the murderer mid-game — "
-            "the killer escapes and the game ends immediately."
-        )
-        critical_rule_name  = "☠️  Critical Rule"
-        critical_rule_value = (
-            "If your team votes out the **actual murderer**, the game ends immediately — "
-            "the killer escapes. There is no second chance. "
-            "Be certain before you vote someone innocent."
-        )
-
     return [
         {
             "title": "📖  How to Play — Overview",
@@ -50,14 +22,14 @@ def _build_htp_pages() -> list[dict]:
                 "the suspects, gather clues across 4 rounds, and name the murderer "
                 "before the trail goes cold.\n\n"
                 "**Win condition:** Correctly identify the murderer in the final guess.\n"
-                f"{lose_condition}\n\n"
+                "**Lose condition:** Vote out the murderer mid-game (Classic), or fail to name them in the final guess (Silent Investigation).\n\n"
                 "⚠️ **Every case contains a Plottwyst** — a deliberate misdirection "
                 "built into the evidence from the very first clue. "
                 "The opening evidence may point confidently in the wrong direction. "
                 "Trust the clues, but question what they're really telling you."
             ),
             "fields": [
-                ("🎮  Start a Game", "`/lobby` → players join → host clicks Start", False),
+                ("🎮  Start a Game", "`/lobby` → host clicks ⚙️ Settings → players join → Start", False),
                 ("⏱️  Game Length", "~20 minutes", True),
                 ("👥  Players", "2–5 (free)  ·  2–10 (premium)", True),
             ],
@@ -102,7 +74,21 @@ def _build_htp_pages() -> list[dict]:
                 "Later clues are more precise — pay close attention to rounds 3 and 4."
             ),
             "fields": [
-                (critical_rule_name, critical_rule_value, False),
+                (
+                    "🗡️  Classic Mode (default)",
+                    "If your team votes out the **actual murderer**, the game ends immediately — "
+                    "the killer escapes. There is no second chance. "
+                    "Be certain before you clear someone.",
+                    False,
+                ),
+                (
+                    "🔍  Silent Investigation Mode",
+                    "The game **always runs to the final guess** regardless of who is voted out. "
+                    "Cleared suspects can't be named in the final guess — if you clear the murderer "
+                    "mid-game they walk free, but you won't know until the resolution reveal. "
+                    "Host switches modes in ⚙️ Settings before the game starts.",
+                    False,
+                ),
             ],
             "footer": "Page 3 / 5",
             "color": discord.Color.blue(),
