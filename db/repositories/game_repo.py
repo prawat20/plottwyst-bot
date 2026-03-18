@@ -1,6 +1,6 @@
 from __future__ import annotations
 """Game record database operations."""
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.models import Game, GamePlayer
 from game.state import GameState, PlayerState
@@ -31,7 +31,7 @@ async def save_completed_game(
         correct_guess_count = correct_guess_count,
         murderer_elim_round = murderer_elim_round,
         started_at          = datetime.fromisoformat(state.created_at),
-        ended_at            = datetime.utcnow(),
+        ended_at            = datetime.now(timezone.utc),
     )
     session.add(game)
 
