@@ -107,8 +107,10 @@ class AdminCog(commands.Cog):
         )
         for row in top_servers:
             last = row["last_hit"].strftime("%Y-%m-%d %H:%M") if row["last_hit"] else "—"
+            guild = self.bot.get_guild(row["guild_id"])
+            server_name = guild.name if guild else f"`{row['guild_id']}`"
             servers_embed.add_field(
-                name=f"Server `{row['guild_id']}`",
+                name=server_name,
                 value=(
                     f"**{row['hits']}** hits  ·  "
                     f"**{row['unique_users']}** unique users  ·  "
@@ -129,7 +131,11 @@ class AdminCog(commands.Cog):
             guild  = self.bot.get_guild(row["guild_id"])
             if guild:
                 member = guild.get_member(row["user_id"])
-            name = member.display_name if member else (f"Unknown User")
+            name = (
+                member.display_name          # live Discord cache (best)
+                or row.get("display_name")   # cached from last game played
+                or f"User `{row['user_id']}`"  # fallback: at least show the ID
+            )
             users_embed.add_field(
                 name=name,
                 value=(
