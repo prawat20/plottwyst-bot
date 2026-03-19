@@ -11,20 +11,6 @@ from tiers.manager import TierManager
 from tiers.entitlements import Feature
 
 
-_MODE_DESCRIPTIONS: dict[str, str] = {
-    "classic": "🗡️ **Classic** — you'll know immediately if you accidentally clear the murderer",
-    "silent":  "🔍 **Silent Investigation** — all eliminations look identical; the truth only reveals at the end",
-}
-
-
-def _settings_summary(state: GameState) -> str:
-    r1    = getattr(state, "discussion_time_r1", 180)
-    speed = "🐢 Slow" if r1 >= 240 else ("⚡ Fast" if r1 <= 90 else "⚖️ Normal")
-    vote  = getattr(state, "voting_time", 30)
-    guess = getattr(state, "guess_time", 45)
-    return f"Speed: **{speed}**  ·  Vote: **{vote}s**  ·  Guess: **{guess}s**"
-
-
 def _genre_description(key: str) -> str:
     entry = next((g for g in GENRE_MENU if g["key"] == key), None)
     return entry["description"] if entry else ""
@@ -36,11 +22,13 @@ def build_lobby_embed(
     genre_key: str = "random",
 ) -> discord.Embed:
     player_count = len(state.players)
-    player_lines = "\n".join(
-        f"🔹 {p.display_name}" for p in state.players.values()
-    ) or "*No detectives yet — be the first to join!*"
 
-    mode = getattr(state, "voting_mode", "classic")
+    if player_count == 0:
+        players_text = "*No detectives yet — be the first to join!*"
+    else:
+        players_list = "\n".join(f"🔹 {p.display_name}" for p in state.players.values())
+        status = "✅ *Ready — host can start whenever*" if player_count >= 2 else "⏳ *Waiting for more detectives…*"
+        players_text = f"{players_list}\n{status}"
 
     embed = discord.Embed(
         title="🔍  PLOTTWYST — Murder Mystery Lobby",
@@ -54,7 +42,7 @@ def build_lobby_embed(
     )
     embed.add_field(
         name=f"Detectives  ({player_count}/{max_players})",
-        value=player_lines,
+        value=players_text,
         inline=False,
     )
     embed.add_field(
@@ -67,18 +55,8 @@ def build_lobby_embed(
         value=f"<@{state.creator_id}> — pick a genre above and use ⚙️ Settings to configure",
         inline=True,
     )
-    embed.add_field(
-        name="Voting Mode",
-        value=_MODE_DESCRIPTIONS.get(mode, mode),
-        inline=False,
-    )
-    embed.add_field(
-        name="⚙️  Game Settings",
-        value=_settings_summary(state),
-        inline=False,
-    )
-    slots_left  = max_players - player_count
-    slots_text  = f"{slots_left} slot{'s' if slots_left != 1 else ''} remaining" if slots_left > 0 else "Lobby full"
+    slots_left = max_players - player_count
+    slots_text = f"{slots_left} slot{'s' if slots_left != 1 else ''} remaining" if slots_left > 0 else "Lobby full"
     embed.set_footer(text=f"{slots_text}  ·  Lobby expires in 5 minutes")
     return embed
 
@@ -166,7 +144,7 @@ class LobbyView(discord.ui.View):
 
         self.add_item(GenreSelect(is_premium=is_premium))
 
-    @discord.ui.button(label="Settings", style=discord.ButtonStyle.secondary, emoji="⚙️", row=2)
+    @discord.ui.button(label="Settings", style=discord.ButtonStyle.primary, emoji="⚙️", row=2)
     async def settings(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.state.creator_id:
             from bot.views.settings_view import build_settings_embed
@@ -180,8 +158,15 @@ class LobbyView(discord.ui.View):
             embed=view.current_embed(), view=view, ephemeral=True
         )
 
-    @discord.ui.button(label="Join Game", style=discord.ButtonStyle.success, emoji="🕵️", row=2)
+    @discord.ui.button(label="Join Game", style=discord.ButtonStyle.secondary, emoji="🕵️", row=2)
     async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Host is auto-joined at lobby creation — no need to join again
+        if interaction.user.id == self.state.creator_id:
+            await interaction.response.send_message(
+                "You're already in as the host!", ephemeral=True
+            )
+            return
+
         state = await session_manager.load(self.state.channel_id)
         if state is None:
             await interaction.response.send_message("This lobby no longer exists.", ephemeral=True)
@@ -237,8 +222,13 @@ class LobbyView(discord.ui.View):
         await interaction.response.edit_message(
             embed=build_lobby_embed(state, self.max_players, self.selected_genre_key), view=self
         )
+        await interaction.followup.send(
+            "🕵️ You're in! Sit tight — when the host starts you'll see the crime scene, "
+            "suspects, and opening clues together.",
+            ephemeral=True,
+        )
 
-    @discord.ui.button(label="Start Game", style=discord.ButtonStyle.primary, emoji="▶️", row=2)
+    @discord.ui.button(label="Start Game", style=discord.ButtonStyle.success, emoji="▶️", row=2)
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
         state = await session_manager.load(self.state.channel_id)
         if state is None:

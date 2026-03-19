@@ -111,12 +111,12 @@ GENRES: list[dict] = [
 
 # Displayed in the lobby Select menu — order matters for UX
 GENRE_MENU: list[dict] = [
-    {"key": "random",          "label": "Random — Surprise Me!",  "emoji": "🎲", "description": "A different era every game",             "premium": False},
-    {"key": "victorian_gothic","label": "Victorian Gothic",        "emoji": "🏚️", "description": "1880s manor mystery",                   "premium": False},
-    {"key": "noir_1920s",      "label": "1920s Noir",              "emoji": "🌆", "description": "Speakeasies and shadows",                "premium": False},
-    {"key": "corporate",       "label": "Corporate Thriller",      "emoji": "🏢", "description": "Silicon Valley secrets",                 "premium": True},
-    {"key": "medieval",        "label": "Medieval Mystery",        "emoji": "⚔️", "description": "Castles and conspiracies",               "premium": True},
-    {"key": "tropical",        "label": "Tropical Island",         "emoji": "🌴", "description": "Paradise with a dark secret",            "premium": True},
+    {"key": "random",          "label": "Random — Surprise Me!",  "emoji": "🎲", "description": "A different era every game — you never know what case awaits",                         "premium": False},
+    {"key": "victorian_gothic","label": "Victorian Gothic",        "emoji": "🏚️", "description": "Fog-soaked manor, aristocrats with secrets, and a killer among the guests",             "premium": False},
+    {"key": "noir_1920s",      "label": "1920s Noir",              "emoji": "🌆", "description": "Smoky speakeasies, bootleg whiskey, and a body nobody wants found",                    "premium": False},
+    {"key": "corporate",       "label": "Corporate Thriller",      "emoji": "🏢", "description": "Glass-walled offices, deleted files, and a death staged to look accidental",           "premium": True},
+    {"key": "medieval",        "label": "Medieval Mystery",        "emoji": "⚔️", "description": "Stone corridors, poisoned goblets, and a court full of people with motive",            "premium": True},
+    {"key": "tropical",        "label": "Tropical Island",         "emoji": "🌴", "description": "Paradise resort, no way off the island, and someone who won't be checking out",        "premium": True},
 ]
 
 
