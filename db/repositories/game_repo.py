@@ -30,8 +30,8 @@ async def save_completed_game(
         outcome             = outcome,
         correct_guess_count = correct_guess_count,
         murderer_elim_round = murderer_elim_round,
-        started_at          = datetime.fromisoformat(state.created_at),
-        ended_at            = datetime.now(timezone.utc),
+        started_at          = datetime.fromisoformat(state.created_at).replace(tzinfo=None),
+        ended_at            = datetime.now(timezone.utc).replace(tzinfo=None),
     )
     session.add(game)
 
