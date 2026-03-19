@@ -27,10 +27,10 @@ async def check_daily_limit(
 ) -> bool:
     """Returns True if this user can start another game today."""
     user  = await get_or_create(session, user_id, guild_id)
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(timezone.utc).replace(tzinfo=None).date()
     if user.games_date is None or user.games_date.date() < today:
         user.games_today = 0
-        user.games_date  = datetime.now(timezone.utc)
+        user.games_date  = datetime.now(timezone.utc).replace(tzinfo=None)
         await session.commit()
     return user.games_today < limit
 
@@ -42,10 +42,10 @@ async def increment_games_today(
 ) -> None:
     """Increment this user's daily game counter, resetting if it's a new day."""
     user  = await get_or_create(session, user_id, guild_id)
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(timezone.utc).replace(tzinfo=None).date()
     if user.games_date is None or user.games_date.date() < today:
         user.games_today = 0
-        user.games_date  = datetime.now(timezone.utc)
+        user.games_date  = datetime.now(timezone.utc).replace(tzinfo=None)
     user.games_today += 1
     await session.commit()
 
