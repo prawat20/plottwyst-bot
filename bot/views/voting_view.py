@@ -49,10 +49,14 @@ class SuspectVoteButton(discord.ui.Button):
             return
 
         # Don't save pending vote yet — only persist on confirmation to avoid race conditions
+        if state.voting_mode == "silent":
+            warning = "⚠️ If they turn out to be the murderer, they'll be gone from the final suspect list — and nobody can name them."
+        else:
+            warning = "⚠️ If they turn out to be the murderer, nobody wins this round."
         view = ConfirmVoteView(state=state, suspect_name=self.suspect_name)
         await interaction.response.send_message(
             f"You're clearing **{self.suspect_name}** as innocent — removing them from suspicion.\n"
-            f"⚠️ If they turn out to be the murderer, nobody wins this round.\n\n"
+            f"{warning}\n\n"
             f"Are you sure?",
             view=view,
             ephemeral=True,

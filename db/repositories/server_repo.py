@@ -1,6 +1,6 @@
 from __future__ import annotations
 """Server (guild) database operations."""
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from db.models import Server
@@ -26,26 +26,26 @@ async def set_tier(session: AsyncSession, guild_id: int, tier: str) -> None:
     server = await get_or_create(session, guild_id)
     server.tier = tier
     if tier == "premium":
-        server.premium_since = datetime.utcnow()
+        server.premium_since = datetime.now(timezone.utc)
     await session.commit()
 
 
 async def check_daily_limit(session: AsyncSession, guild_id: int, limit: int) -> bool:
     """Returns True if the server can start another game today."""
     server = await get_or_create(session, guild_id)
-    today  = datetime.utcnow().date()
+    today  = datetime.now(timezone.utc).date()
     if server.games_date is None or server.games_date.date() < today:
         server.games_today = 0
-        server.games_date  = datetime.utcnow()
+        server.games_date  = datetime.now(timezone.utc)
         await session.commit()
     return server.games_today < limit
 
 
 async def increment_games_today(session: AsyncSession, guild_id: int) -> None:
     server = await get_or_create(session, guild_id)
-    today  = datetime.utcnow().date()
+    today  = datetime.now(timezone.utc).date()
     if server.games_date is None or server.games_date.date() < today:
         server.games_today = 0
-        server.games_date  = datetime.utcnow()
+        server.games_date  = datetime.now(timezone.utc)
     server.games_today += 1
     await session.commit()
