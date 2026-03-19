@@ -57,6 +57,17 @@ def _build_embed(speed: str, vote: str, guess: str, mode: str) -> discord.Embed:
     return embed
 
 
+# ── Read-only embed for non-hosts ─────────────────────────────────────────────
+
+def build_settings_embed(state) -> discord.Embed:
+    """Return the settings embed for the current state — used for read-only display."""
+    speed = _speed_from_times(state.discussion_time_r1, state.discussion_time_r2)
+    vote  = str(state.voting_time)
+    guess = str(state.guess_time)
+    mode  = state.voting_mode
+    return _build_embed(speed, vote, guess, mode)
+
+
 # ── Option button ─────────────────────────────────────────────────────────────
 
 class _OptionBtn(discord.ui.Button):

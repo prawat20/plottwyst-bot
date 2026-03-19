@@ -11,14 +11,23 @@ from tiers.manager import TierManager
 from tiers.entitlements import Feature
 
 
+_MODE_DESCRIPTIONS: dict[str, str] = {
+    "classic": "🗡️ **Classic** — you'll know immediately if you accidentally clear the murderer",
+    "silent":  "🔍 **Silent Investigation** — all eliminations look identical; the truth only reveals at the end",
+}
+
+
 def _settings_summary(state: GameState) -> str:
     r1    = getattr(state, "discussion_time_r1", 180)
     speed = "🐢 Slow" if r1 >= 240 else ("⚡ Fast" if r1 <= 90 else "⚖️ Normal")
     vote  = getattr(state, "voting_time", 30)
     guess = getattr(state, "guess_time", 45)
-    mode  = getattr(state, "voting_mode", "classic")
-    mode_label = "🗡️ Classic" if mode == "classic" else "🔍 Silent Investigation"
-    return f"Speed: **{speed}**  ·  Vote: **{vote}s**  ·  Guess: **{guess}s**  ·  Mode: **{mode_label}**"
+    return f"Speed: **{speed}**  ·  Vote: **{vote}s**  ·  Guess: **{guess}s**"
+
+
+def _genre_description(key: str) -> str:
+    entry = next((g for g in GENRE_MENU if g["key"] == key), None)
+    return entry["description"] if entry else ""
 
 
 def build_lobby_embed(
@@ -31,12 +40,15 @@ def build_lobby_embed(
         f"🔹 {p.display_name}" for p in state.players.values()
     ) or "*No detectives yet — be the first to join!*"
 
+    mode = getattr(state, "voting_mode", "classic")
+
     embed = discord.Embed(
         title="🔍  PLOTTWYST — Murder Mystery Lobby",
         description=(
             "A crime has been committed. Gather your team, study the suspects, "
             "and name the murderer before the trail goes cold.\n\n"
-            "**Join the lobby below.** The host can start once everyone is in."
+            "**Join the lobby below.** The host can start once everyone is in.\n\n"
+            "📖 **How it works:** Crime scene → suspects → clues → 4 rounds of debate → name the killer"
         ),
         color=discord.Color.dark_blue(),
     )
@@ -47,13 +59,18 @@ def build_lobby_embed(
     )
     embed.add_field(
         name="Story Setting",
-        value=genre_display_name(genre_key),
+        value=f"{genre_display_name(genre_key)}\n*{_genre_description(genre_key)}*",
         inline=True,
     )
     embed.add_field(
-        name="How to Play",
-        value="New to Plottwyst? Use `/howtoplay`",
+        name="🎬  Host",
+        value=f"<@{state.creator_id}> — pick a genre above and use ⚙️ Settings to configure",
         inline=True,
+    )
+    embed.add_field(
+        name="Voting Mode",
+        value=_MODE_DESCRIPTIONS.get(mode, mode),
+        inline=False,
     )
     embed.add_field(
         name="⚙️  Game Settings",
@@ -62,7 +79,7 @@ def build_lobby_embed(
     )
     slots_left  = max_players - player_count
     slots_text  = f"{slots_left} slot{'s' if slots_left != 1 else ''} remaining" if slots_left > 0 else "Lobby full"
-    embed.set_footer(text=f"{slots_text}  ·  Lobby expires in 5 minutes  ·  Host: ⚙️ Settings to customise")
+    embed.set_footer(text=f"{slots_text}  ·  Lobby expires in 5 minutes")
     return embed
 
 
@@ -152,9 +169,10 @@ class LobbyView(discord.ui.View):
     @discord.ui.button(label="Settings", style=discord.ButtonStyle.secondary, emoji="⚙️", row=2)
     async def settings(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.state.creator_id:
-            await interaction.response.send_message(
-                "Only the host can change game settings.", ephemeral=True
-            )
+            from bot.views.settings_view import build_settings_embed
+            embed = build_settings_embed(self.state)
+            embed.set_footer(text="Only the host can change these settings.")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
         from bot.views.settings_view import SettingsView
         view = SettingsView(lobby_view=self)

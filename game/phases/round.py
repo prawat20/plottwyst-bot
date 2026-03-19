@@ -374,11 +374,10 @@ async def run_voting(
         else:
             # Current behaviour — reveal immediately and end the game.
             result_embed = discord.Embed(
-                title="💀  THE MURDERER WAS CLEARED — Round Forfeit",
+                title="💀  THE MURDERER WAS CLEARED — Game Over",
                 description=(
                     f"The detectives cleared **{eliminated}**... who was the murderer all along.\n\n"
-                    "The killer slips through your fingers. Nobody wins this round.\n"
-                    "The investigation continues — don't make the same mistake again."
+                    "The killer slips through your fingers. The case is closed."
                 ),
                 color=discord.Color.dark_red(),
             )
