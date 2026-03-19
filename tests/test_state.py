@@ -234,3 +234,79 @@ class TestSerialisation:
         restored = GameState.from_dict(state.to_dict())
         assert all(isinstance(k, int) for k in restored.players.keys())
         assert all(isinstance(k, int) for k in restored.votes.keys())
+
+    def test_custom_settings_survive_round_trip(self):
+        """Custom settings fields must serialise and deserialise correctly."""
+        state = make_state(2)
+        state.discussion_time_r1 = 90
+        state.discussion_time_r2 = 60
+        state.voting_time        = 45
+        state.guess_time         = 30
+        state.voting_mode        = "silent"
+
+        restored = GameState.from_dict(state.to_dict())
+        assert restored.discussion_time_r1 == 90
+        assert restored.discussion_time_r2 == 60
+        assert restored.voting_time        == 45
+        assert restored.guess_time         == 30
+        assert restored.voting_mode        == "silent"
+
+    def test_murderer_eliminated_round_survives_round_trip(self):
+        state = make_state(2)
+        state.murderer_eliminated_round = 2
+
+        restored = GameState.from_dict(state.to_dict())
+        assert restored.murderer_eliminated_round == 2
+
+    def test_murderer_eliminated_round_none_survives_round_trip(self):
+        state = make_state(2)
+        assert state.murderer_eliminated_round is None
+
+        restored = GameState.from_dict(state.to_dict())
+        assert restored.murderer_eliminated_round is None
+
+    def test_backwards_compat_missing_custom_settings(self):
+        """Sessions saved before custom settings fields must load with config defaults."""
+        import config
+        state = make_state(2)
+        d = state.to_dict()
+        # Remove the new fields to simulate an old session
+        for key in ("discussion_time_r1", "discussion_time_r2", "voting_time",
+                    "guess_time", "voting_mode", "murderer_eliminated_round"):
+            d.pop(key, None)
+
+        restored = GameState.from_dict(d)
+        assert restored.discussion_time_r1 == config.DISCUSSION_TIME_R1
+        assert restored.discussion_time_r2 == config.DISCUSSION_TIME_R2
+        assert restored.voting_time        == config.VOTING_TIME
+        assert restored.guess_time         == config.GUESS_TIME
+        expected_mode = "silent" if config.SILENT_ELIMINATION else "classic"
+        assert restored.voting_mode        == expected_mode
+        assert restored.murderer_eliminated_round is None
+
+
+# ── GameState.new() defaults ──────────────────────────────────────────────────
+
+class TestGameStateNewDefaults:
+    def test_new_sets_correct_custom_setting_defaults(self):
+        """GameState.new() must pull defaults from config."""
+        import config
+        state = GameState.new(guild_id=1, channel_id=1, creator_id=1)
+        assert state.discussion_time_r1 == config.DISCUSSION_TIME_R1
+        assert state.discussion_time_r2 == config.DISCUSSION_TIME_R2
+        assert state.voting_time        == config.VOTING_TIME
+        assert state.guess_time         == config.GUESS_TIME
+        expected_mode = "silent" if config.SILENT_ELIMINATION else "classic"
+        assert state.voting_mode        == expected_mode
+
+    def test_new_murderer_eliminated_round_is_none(self):
+        state = GameState.new(guild_id=1, channel_id=1, creator_id=1)
+        assert state.murderer_eliminated_round is None
+
+    def test_new_phase_is_lobby(self):
+        state = GameState.new(guild_id=1, channel_id=1, creator_id=1)
+        assert state.phase == "LOBBY"
+
+    def test_new_round_is_zero(self):
+        state = GameState.new(guild_id=1, channel_id=1, creator_id=1)
+        assert state.round == 0
